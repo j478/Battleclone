@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/WeaponData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+weapon_name = "Rocket Launcher"
+fire_mode = 1
+damage = 65.0
+fire_rate = 0.9
+range_meters = 100.0
+spread_degrees = 0.4
+ammo_per_clip = 4
+reload_time = 2.6
+is_automatic = false
+splash_radius = 5.0
+splash_damage = 55.0
+projectile_speed = 32.0
+tracer_speed = 240.0

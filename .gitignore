@@ -1,0 +1,17 @@
+# Godot 4 generated/local files
+.godot/
+.import/
+export.cfg
+*.translation
+
+# export_presets.cfg is intentionally tracked (not gitignored) so the Web
+# export config doesn't need to be re-created by whoever clones this repo.
+
+# Generated exports
+build/
+
+# OS
+.DS_Store
+
+# Python venv (unused scaffold, not part of the Godot project)
+.venv/

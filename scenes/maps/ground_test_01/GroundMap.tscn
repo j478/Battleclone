@@ -1,0 +1,179 @@
+[gd_scene load_steps=15 format=3]
+
+[ext_resource type="Script" path="res://scripts/gamemode/ConquestMode.gd" id="1"]
+[ext_resource type="PackedScene" path="res://scenes/gamemode/CommandPost.tscn" id="2"]
+[ext_resource type="Resource" path="res://resources/factions/faction_a.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/factions/faction_b.tres" id="4"]
+[ext_resource type="PackedScene" path="res://scenes/ui/HUD.tscn" id="5"]
+[ext_resource type="PackedScene" path="res://scenes/ui/ClassSelect.tscn" id="6"]
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 1
+background_color = Color(0.55, 0.7, 0.85, 1)
+ambient_light_source = 2
+ambient_light_color = Color(0.55, 0.6, 0.65, 1)
+ambient_light_energy = 1.0
+
+[sub_resource type="BoxShape3D" id="GroundShape"]
+size = Vector3(140, 1, 140)
+
+[sub_resource type="BoxMesh" id="GroundMesh"]
+size = Vector3(140, 1, 140)
+
+[sub_resource type="StandardMaterial3D" id="GroundMat"]
+albedo_color = Color(0.32, 0.38, 0.3, 1)
+roughness = 0.95
+
+[sub_resource type="BoxShape3D" id="CrateShape"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="BoxMesh" id="CrateMesh"]
+size = Vector3(2, 2, 2)
+
+[sub_resource type="StandardMaterial3D" id="CrateMat"]
+albedo_color = Color(0.5, 0.42, 0.3, 1)
+roughness = 0.9
+
+[sub_resource type="NavigationMesh" id="NavMesh_1"]
+geometry_parsed_geometry_type = 1
+cell_size = 0.25
+cell_height = 0.25
+agent_height = 2.0
+agent_radius = 0.5
+agent_max_climb = 0.5
+
+[node name="GroundTest01" type="Node3D"]
+script = ExtResource("1")
+bot_count_per_faction = 6
+respawn_delay = 5.0
+faction_a_data = ExtResource("3")
+faction_b_data = ExtResource("4")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.8, -0.35, 0.48, 0, 0.8, 0.6, -0.6, -0.48, 0.64, 0, 20, 0)
+shadow_enabled = true
+
+[node name="NavigationRegion3D" type="NavigationRegion3D" parent="."]
+navigation_mesh = SubResource("NavMesh_1")
+
+[node name="Ground" type="StaticBody3D" parent="NavigationRegion3D"]
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+shape = SubResource("GroundShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Ground"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+mesh = SubResource("GroundMesh")
+surface_material_override/0 = SubResource("GroundMat")
+
+[node name="Crate1" type="StaticBody3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 1, 6)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate1"]
+shape = SubResource("CrateShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate1"]
+mesh = SubResource("CrateMesh")
+surface_material_override/0 = SubResource("CrateMat")
+
+[node name="Crate2" type="StaticBody3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 1, -6)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate2"]
+shape = SubResource("CrateShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate2"]
+mesh = SubResource("CrateMesh")
+surface_material_override/0 = SubResource("CrateMat")
+
+[node name="Crate3" type="StaticBody3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 8)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate3"]
+shape = SubResource("CrateShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate3"]
+mesh = SubResource("CrateMesh")
+surface_material_override/0 = SubResource("CrateMat")
+
+[node name="Crate4" type="StaticBody3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -8)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate4"]
+shape = SubResource("CrateShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate4"]
+mesh = SubResource("CrateMesh")
+surface_material_override/0 = SubResource("CrateMat")
+
+[node name="Crate5" type="StaticBody3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 1, 6)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate5"]
+shape = SubResource("CrateShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate5"]
+mesh = SubResource("CrateMesh")
+surface_material_override/0 = SubResource("CrateMat")
+
+[node name="Crate6" type="StaticBody3D" parent="NavigationRegion3D"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 1, -6)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate6"]
+shape = SubResource("CrateShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate6"]
+mesh = SubResource("CrateMesh")
+surface_material_override/0 = SubResource("CrateMat")
+
+[node name="CommandPosts" type="Node3D" parent="."]
+
+[node name="HomeA" parent="CommandPosts" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 0, 0)
+post_name = "Faction A Base"
+capturable = false
+starting_owner_faction_id = 0
+
+[node name="CP1" parent="CommandPosts" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, 0)
+post_name = "Outpost North"
+
+[node name="CP2" parent="CommandPosts" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+post_name = "Central Depot"
+
+[node name="CP3" parent="CommandPosts" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, 0)
+post_name = "Outpost South"
+
+[node name="HomeB" parent="CommandPosts" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0, 0)
+post_name = "Faction B Base"
+capturable = false
+starting_owner_faction_id = 1
+
+[node name="UnitsRoot" type="Node3D" parent="."]
+
+[node name="UILayer" type="CanvasLayer" parent="."]
+
+[node name="HUD" parent="UILayer" instance=ExtResource("5")]
+
+[node name="ClassSelect" parent="UILayer" instance=ExtResource("6")]

@@ -36,6 +36,8 @@ const VEHICLE_STEER_FULL_LOCK_DEG := 45.0
 const VEHICLE_THROTTLE_EASE_DEG := 90.0
 const VEHICLE_THROTTLE_MIN := 0.2 # keeps the vehicle pivoting toward target instead of stalling
 const VEHICLE_FIRE_HEADING_TOLERANCE_DEG := 15.0 # forward-fixed weapons shouldn't fire while badly misaligned
+const MAP_BOUNDARY_LIMIT := 60.0 # ground extends to ~70; steer back well before actually reaching the edge
+const VEHICLE_OBSTACLE_LOOKAHEAD := 6.0
 
 @onready var unit: Unit = get_parent() as Unit
 @onready var nav_agent: NavigationAgent3D = unit.get_node("NavigationAgent3D") as NavigationAgent3D
@@ -408,16 +410,29 @@ func _tick_vehicle_engage() -> void:
 	var weapon_data: WeaponData = vehicle.weapon_handler.weapon_data
 	var blast_radius: float = weapon_data.splash_radius if weapon_data else 0.0
 	var too_close: bool = blast_radius > 0.0 and dist < blast_radius * SPLASH_SAFETY_MARGIN
-
-	var target_point: Vector3 = _target_enemy.global_position
-	if too_close:
-		target_point = vehicle.global_position - to_enemy.normalized() * 12.0 # back off
-
-	vehicle.move_input = _compute_steer_throttle(vehicle, target_point)
+	# No reverse/strafe in this movement model, so true kiting/circling
+	# isn't achievable -- but a vehicle with no minimum range would always
+	# aim for the enemy's exact position and keep closing on a moving or
+	# distant target indefinitely, which is how they'd end up chasing
+	# clear across the map (including toward the edges). Once already
+	# within comfortable firing range, stop closing and just turn to
+	# track/aim instead.
+	var effective_range: float = (weapon_data.range_meters * 0.75) if weapon_data else VEHICLE_ENGAGE_RANGE
+	var in_firing_range: bool = dist <= effective_range
 
 	var heading_error: float = _heading_error(vehicle, _target_enemy.global_position)
 	var aligned: bool = abs(rad_to_deg(heading_error)) <= VEHICLE_FIRE_HEADING_TOLERANCE_DEG
-	vehicle.fire_held = not too_close and aligned and _has_line_of_sight(vehicle.global_position, _target_enemy)
+
+	if too_close:
+		var target_point: Vector3 = vehicle.global_position - to_enemy.normalized() * 12.0 # back off
+		vehicle.move_input = _compute_steer_throttle(vehicle, target_point)
+	elif in_firing_range:
+		var steer: float = clamp(-heading_error / deg_to_rad(VEHICLE_STEER_FULL_LOCK_DEG), -1.0, 1.0)
+		vehicle.move_input = Vector2(steer, 0.0) # hold position, just turn to aim
+	else:
+		vehicle.move_input = _compute_steer_throttle(vehicle, _target_enemy.global_position)
+
+	vehicle.fire_held = not too_close and aligned and in_firing_range and _has_line_of_sight(vehicle.global_position, _target_enemy)
 
 # ---------------------------------------------------------------------------
 # Gunning
@@ -455,15 +470,50 @@ func _heading_error(vehicle: Vehicle, target_pos: Vector3) -> float:
 	return forward.normalized().signed_angle_to(to_target.normalized(), Vector3.UP)
 
 func _compute_steer_throttle(vehicle: Vehicle, target_pos: Vector3) -> Vector2:
-	var to_target: Vector3 = target_pos - vehicle.global_position
+	var pos: Vector3 = vehicle.global_position
+	var effective_target: Vector3 = target_pos
+	# A bad/distant target (e.g. chasing an enemy) shouldn't be able to
+	# walk a vehicle off the map -- once past the safety margin, ignore
+	# whatever we were actually steering toward and head back to center
+	# until we're comfortably inside it again.
+	if abs(pos.x) > MAP_BOUNDARY_LIMIT or abs(pos.z) > MAP_BOUNDARY_LIMIT:
+		effective_target = Vector3.ZERO
+
+	var to_target: Vector3 = effective_target - pos
 	to_target.y = 0.0
 	if to_target.length() < 1.0:
 		return Vector2.ZERO
-	var heading_error: float = _heading_error(vehicle, target_pos)
+	var heading_error: float = _heading_error(vehicle, effective_target)
 	# Negated: confirmed live that the unnegated sign steered the vehicle
 	# away from its target (Vehicle._physics_process's
 	# rotate_y(-move_input.x * turn_rate * delta) turns the opposite way
 	# from what signed_angle_to's convention would suggest).
 	var steer: float = clamp(-heading_error / deg_to_rad(VEHICLE_STEER_FULL_LOCK_DEG), -1.0, 1.0)
 	var throttle: float = clamp(1.0 - abs(heading_error) / deg_to_rad(VEHICLE_THROTTLE_EASE_DEG), VEHICLE_THROTTLE_MIN, 1.0)
+
+	var obstacle_steer_bias: float = _obstacle_steer_bias(vehicle)
+	if obstacle_steer_bias != 0.0:
+		steer = clamp(steer + obstacle_steer_bias, -1.0, 1.0)
+		throttle *= 0.5
+
 	return Vector2(steer, throttle)
+
+## Short forward raycast against world geometry (crates, terrain -- not
+## other units/vehicles, so it doesn't flinch away from soldiers or get
+## confused avoiding the very vehicle it might be chasing) so vehicles
+## swerve around obstacles directly ahead instead of just shoving into
+## them via plain collision.
+func _obstacle_steer_bias(vehicle: Vehicle) -> float:
+	var forward: Vector3 = -vehicle.global_transform.basis.z
+	var from: Vector3 = vehicle.global_position + Vector3.UP * 0.5
+	var to: Vector3 = from + forward * VEHICLE_OBSTACLE_LOOKAHEAD
+	var space_state: PhysicsDirectSpaceState3D = vehicle.get_world_3d().direct_space_state
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.exclude = [vehicle.get_rid()]
+	query.collision_mask = 1 # world only
+	var result: Dictionary = space_state.intersect_ray(query)
+	if result.is_empty():
+		return 0.0
+	var right: Vector3 = forward.cross(Vector3.UP)
+	var to_hit: Vector3 = result.position - vehicle.global_position
+	return 1.0 if to_hit.dot(right) < 0.0 else -1.0

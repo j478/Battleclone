@@ -20,6 +20,8 @@ const MAX_KILL_FEED_ENTRIES := 6
 var _bound_health: Health
 var _bound_weapon_handler: WeaponHandler
 var _bound_target: Node # whichever Unit/Vehicle is currently bound
+var _bound_vehicle: Vehicle
+var _bound_seat_role: int = -1 # VehicleSeat.SeatRole, or -1 when not driving
 
 func _ready() -> void:
 	EventBus.tickets_changed.connect(_on_tickets_changed)
@@ -38,6 +40,8 @@ func bind_to_unit(unit: Unit) -> void:
 	_bind_health(unit.health)
 	_bind_ammo(unit.weapon_handler)
 	_bound_target = unit
+	_bound_vehicle = null
+	_bound_seat_role = -1
 	crosshair.visible = true
 
 func bind_to_vehicle(vehicle: Vehicle, seat: VehicleSeat) -> void:
@@ -46,7 +50,46 @@ func bind_to_vehicle(vehicle: Vehicle, seat: VehicleSeat) -> void:
 	var wh: WeaponHandler = vehicle.turret_weapon_handler if is_gunner and vehicle.turret_weapon_handler else vehicle.weapon_handler
 	_bind_ammo(wh)
 	_bound_target = vehicle
+	_bound_vehicle = vehicle
+	_bound_seat_role = seat.seat_role
 	crosshair.visible = true
+
+## The driver's weapon fires along the vehicle's heading, not camera
+## look direction (steering a chassis and aiming a camera don't mix),
+## so a screen-centered crosshair would lie about where shots go. Project
+## the vehicle's actual forward direction into view instead, and fade it
+## out when that direction isn't even on screen. The gunner's turret DOES
+## follow the camera, so it keeps the normal centered crosshair.
+func _process(_delta: float) -> void:
+	if not crosshair.visible:
+		return
+	if _bound_vehicle and is_instance_valid(_bound_vehicle) and _bound_seat_role == VehicleSeat.SeatRole.DRIVER:
+		_update_driver_crosshair()
+	else:
+		crosshair.modulate.a = 1.0
+		crosshair.position = get_viewport_rect().size / 2.0 - crosshair.size / 2.0
+
+func _update_driver_crosshair() -> void:
+	var cam := get_viewport().get_camera_3d()
+	if not cam:
+		crosshair.modulate.a = 0.0
+		return
+
+	var forward: Vector3 = -_bound_vehicle.global_transform.basis.z
+	var aim_point: Vector3 = _bound_vehicle.global_position + forward * 20.0
+	var to_point: Vector3 = aim_point - cam.global_position
+	if to_point.dot(-cam.global_transform.basis.z) <= 0.1:
+		crosshair.modulate.a = 0.0 # vehicle heading is behind/beside the camera
+		return
+
+	var screen_pos: Vector2 = cam.unproject_position(aim_point)
+	var viewport_size: Vector2 = get_viewport_rect().size
+	if screen_pos.x < 0.0 or screen_pos.x > viewport_size.x or screen_pos.y < 0.0 or screen_pos.y > viewport_size.y:
+		crosshair.modulate.a = 0.0 # off-screen
+		return
+
+	crosshair.modulate.a = 1.0
+	crosshair.position = screen_pos - crosshair.size / 2.0
 
 func _bind_health(health: Health) -> void:
 	if _bound_health and is_instance_valid(_bound_health):

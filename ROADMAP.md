@@ -15,12 +15,14 @@ Current state: a playable vertical slice — Trooper/Heavy classes, AI bots, one
 - Wire up weapon *switching* (primary/secondary), not just one equipped weapon — `switch_weapon` input action already exists but isn't consumed yet. `WeaponHandler` would need a second slot and an `equip_slot(index)` call from `PlayerInput`/`AIBrain`.
 - Thermal detonator as a throwable using the existing `Projectile.gd` (it already supports arcing + splash).
 
-## Phase 2 — Vehicles
+## Phase 2 — Vehicles (done: speeder bike + walker)
 
-- `Vehicle.gd`: reuse `Health` + `WeaponHandler` components exactly as `Unit.gd` does.
-- `VehicleSeat.gd`: an `Area3D` the player/bot walks into; on enter, it swaps the occupant's input source the same way `PlayerInput`/`AIBrain` swap into `Unit` — the seat "possesses" the vehicle by writing into vehicle-specific intent fields (throttle/steer instead of move_input, but same pattern). Player's own `Unit` is hidden/disabled while seated, not destroyed, so exiting just re-enables it at the exit point.
-- Start with ground vehicles only (speeder bike: fast/fragile; AT-ST-style walker: slow/armored, second gunner seat) — proves the seat pattern before flight adds a dimension.
-- AI vehicle driving can reuse `AIBrain`'s state machine shape (advance/engage/capture) with `NavigationAgent3D` swapped for simpler point-to-point steering, since walkers/speeders don't need full navmesh pathing everywhere.
+Built: `Vehicle.gd`/`VehicleSeat.gd`/`VehicleData.gd`/`VehicleHealth.gd` (`scripts/vehicle/`), reusing `Health`/`WeaponHandler` exactly as `Unit.gd` does. Seats possess the occupant's `PlayerInput` the same way `PlayerInput`/`AIBrain` drive `Unit` — enter/exit mirrors `Unit`'s own hide/disable pattern, so the soldier is paused not destroyed. Two vehicles live at `scenes/vehicles/`: the speeder bike (single seat, fast/fragile hover) and the AT-ST-style walker (driver + independently-aimed gunner turret, slow/armored, grounded). Vehicles carry a regenerating shield in front of health, and AI bots can target/fire on them (confirmed working live). Playtesting caught and fixed two real bugs worth remembering: vehicle `CameraRig`s auto-activating on spawn (fixed via `start_active`/`activate()`), and the walker's two seat triggers fully overlapping so the gunner seat was unreachable (fixed by spatially separating them).
+
+**Remaining vehicle work, not yet built:**
+- AI *driving* vehicles — deferred by design this pass. Can reuse `AIBrain`'s state machine shape (advance/engage/capture) with `NavigationAgent3D` swapped for simpler point-to-point steering.
+- Direct seat-to-seat swap (driver ↔ gunner) without exiting first — currently `interact` while possessed always exits; confirmed acceptable UX for now, but a small addition to `VehicleSeat`/`PlayerInput` if wanted later.
+- More vehicle types as needed.
 
 ## Phase 3 — Flight and space combat
 
@@ -28,6 +30,7 @@ Current state: a playable vertical slice — Trooper/Heavy classes, AI bots, one
 - A `SpaceZone` scene: same `ConquestMode`-style root, but flight-only (no ground, no gravity), positioned at a large Y offset from the ground map so both can be loaded simultaneously without coordinate precision issues.
 - Space `CommandPost`s (subsystem objectives — shields, engines, hangar) register into the same shared `MatchState.command_posts` list ground posts use. No changes needed to `MatchState` itself.
 - Capital ship interiors: a hangar `NavigationRegion3D` sized like the ground map's, entered by flying a fighter into a landing-bay trigger volume.
+- **Troop transport/dropship** as a natural vehicle type here: the original BF2's AI transports landed at a friendly command post, picked up soldiers, then flew to and landed at an enemy post to deploy them — effectively a live preview of the flight-corridor mechanism above. Reuses the same `Vehicle`/`VehicleSeat` architecture from Phase 2 (multiple passenger seats, no weapon needed) plus whatever `AtmosphericFlightController`/`SpaceFlightController` this phase adds.
 
 ## Phase 4 — Seamless ground↔space transition (the signature feature)
 

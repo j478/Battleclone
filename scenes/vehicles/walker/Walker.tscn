@@ -1,0 +1,137 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://scripts/vehicle/Vehicle.gd" id="1"]
+[ext_resource type="Script" path="res://scripts/vehicle/VehicleHealth.gd" id="2"]
+[ext_resource type="Script" path="res://scripts/unit/WeaponHandler.gd" id="3"]
+[ext_resource type="Script" path="res://scripts/vehicle/VehicleSeat.gd" id="4"]
+[ext_resource type="Script" path="res://scripts/player/CameraRig.gd" id="5"]
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_body"]
+radius = 1.0
+height = 3.0
+
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_body"]
+radius = 1.0
+height = 3.0
+
+[sub_resource type="CylinderShape3D" id="CylinderShape3D_seat"]
+radius = 1.6
+height = 3.0
+
+[sub_resource type="BoxMesh" id="BoxMesh_turret"]
+size = Vector3(0.9, 0.6, 1.3)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_turret"]
+albedo_color = Color(0.25, 0.27, 0.23, 1)
+
+[node name="Walker" type="CharacterBody3D"]
+collision_layer = 3
+collision_mask = 1
+script = ExtResource("1")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+shape = SubResource("CapsuleShape3D_body")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
+mesh = SubResource("CapsuleMesh_body")
+
+[node name="Muzzle" type="Marker3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.6, -1.1)
+
+[node name="Health" type="Node" parent="."]
+script = ExtResource("2")
+
+[node name="WeaponHandler" type="Node" parent="."]
+script = ExtResource("3")
+muzzle_path = NodePath("../Muzzle")
+
+[node name="NavigationObstacle3D" type="NavigationObstacle3D" parent="."]
+radius = 1.4
+height = 3.2
+avoidance_enabled = true
+
+[node name="TurretPivot" type="Node3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.7, 0)
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="TurretPivot"]
+mesh = SubResource("BoxMesh_turret")
+surface_material_override/0 = SubResource("StandardMaterial3D_turret")
+
+[node name="TurretMuzzle" type="Marker3D" parent="TurretPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, -0.7)
+
+[node name="TurretWeaponHandler" type="Node" parent="TurretPivot"]
+script = ExtResource("3")
+muzzle_path = NodePath("../TurretMuzzle")
+
+[node name="DriverSeat" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("4")
+seat_role = 0
+seat_label = "driver"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="DriverSeat"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -2.0)
+shape = SubResource("CylinderShape3D_seat")
+
+[node name="ExitPoint" type="Marker3D" parent="DriverSeat"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2.4, 0, -2.0)
+
+[node name="CameraRig" type="Node3D" parent="DriverSeat"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.0, 0)
+script = ExtResource("5")
+start_active = false
+
+[node name="Pivot" type="Node3D" parent="DriverSeat/CameraRig"]
+
+[node name="SpringArm3D" type="SpringArm3D" parent="DriverSeat/CameraRig/Pivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.6, 0.3, 0)
+collision_mask = 1
+spring_length = 6.0
+
+[node name="TPSCamera" type="Camera3D" parent="DriverSeat/CameraRig/Pivot/SpringArm3D"]
+current = false
+fov = 75.0
+
+[node name="FPSCamera" type="Camera3D" parent="DriverSeat/CameraRig/Pivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.3, -0.3)
+current = false
+fov = 75.0
+
+[node name="GunnerSeat" type="Area3D" parent="."]
+collision_layer = 0
+collision_mask = 2
+script = ExtResource("4")
+seat_role = 1
+seat_label = "gunner"
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="GunnerSeat"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 2.0)
+shape = SubResource("CylinderShape3D_seat")
+
+[node name="ExitPoint" type="Marker3D" parent="GunnerSeat"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2.4, 0, 2.0)
+
+[node name="CameraRig" type="Node3D" parent="GunnerSeat"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 2.9, 0)
+script = ExtResource("5")
+start_active = false
+
+[node name="Pivot" type="Node3D" parent="GunnerSeat/CameraRig"]
+
+[node name="SpringArm3D" type="SpringArm3D" parent="GunnerSeat/CameraRig/Pivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.4, 0.2, 0)
+collision_mask = 1
+spring_length = 4.5
+
+[node name="TPSCamera" type="Camera3D" parent="GunnerSeat/CameraRig/Pivot/SpringArm3D"]
+current = false
+fov = 75.0
+
+[node name="FPSCamera" type="Camera3D" parent="GunnerSeat/CameraRig/Pivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, -0.3)
+current = false
+fov = 75.0

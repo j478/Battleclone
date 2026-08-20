@@ -1,0 +1,22 @@
+[gd_resource type="Resource" script_class="VehicleData" load_steps=4 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/VehicleData.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/weapons/walker_cannon.tres" id="2"]
+[ext_resource type="Resource" path="res://resources/weapons/walker_turret_blaster.tres" id="3"]
+
+[resource]
+script = ExtResource("1")
+vehicle_name = "AT-Walker"
+max_health = 350.0
+max_shield = 150.0
+shield_regen_per_second = 12.0
+shield_regen_delay = 5.0
+max_speed = 6.0
+acceleration = 5.0
+turn_rate_degrees = 50.0
+is_hover = false
+hover_height = 0.0
+primary_weapon = ExtResource("2")
+turret_weapon = ExtResource("3")
+occupant_eject_damage = 50.0
+body_color = Color(0.35, 0.38, 0.32, 1)

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/WeaponData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+weapon_name = "Walker Cannon"
+fire_mode = 1
+damage = 45.0
+fire_rate = 1.2
+range_meters = 90.0
+spread_degrees = 0.5
+ammo_per_clip = 9999
+reload_time = 0.1
+is_automatic = false
+splash_radius = 3.0
+splash_damage = 25.0
+projectile_speed = 40.0
+tracer_speed = 240.0

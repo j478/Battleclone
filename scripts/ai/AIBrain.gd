@@ -22,7 +22,7 @@ const SPLASH_SAFETY_MARGIN := 1.3 # don't fire a splash weapon if the blast woul
 var _bot_state: BotState = BotState.ADVANCE
 var _decision_timer: float = randf_range(0.0, DECISION_INTERVAL_MAX)
 var _target_post: Node = null
-var _target_enemy: Unit = null
+var _target_enemy = null # Unit or Vehicle — duck-typed (faction_id, health, global_position)
 
 func _ready() -> void:
 	nav_agent.path_desired_distance = 0.75
@@ -58,24 +58,26 @@ func _make_decision() -> void:
 	else:
 		_bot_state = BotState.ADVANCE
 
-func _find_visible_enemy() -> Unit:
-	var closest: Unit = null
+func _find_visible_enemy():
+	var closest = null
 	var closest_dist: float = ENGAGE_RANGE
-	for node in unit.get_tree().get_nodes_in_group("units"):
-		if node == unit or not (node is Unit):
+	var candidates: Array = []
+	candidates.append_array(unit.get_tree().get_nodes_in_group("units"))
+	candidates.append_array(unit.get_tree().get_nodes_in_group("vehicles"))
+	for node in candidates:
+		if node == unit:
 			continue
-		var other: Unit = node
-		if other.faction_id == unit.faction_id or other.health.is_dead:
+		if node.faction_id == unit.faction_id or node.health.is_dead:
 			continue
-		var dist: float = unit.global_position.distance_to(other.global_position)
+		var dist: float = unit.global_position.distance_to(node.global_position)
 		if dist >= closest_dist:
 			continue
-		if _has_line_of_sight(other):
-			closest = other
+		if _has_line_of_sight(node):
+			closest = node
 			closest_dist = dist
 	return closest
 
-func _has_line_of_sight(target: Unit) -> bool:
+func _has_line_of_sight(target) -> bool:
 	var from: Vector3 = unit.global_position + Vector3.UP
 	var to: Vector3 = target.global_position + Vector3.UP
 	var space_state: PhysicsDirectSpaceState3D = unit.get_world_3d().direct_space_state

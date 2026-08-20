@@ -1,0 +1,21 @@
+[gd_resource type="Resource" script_class="VehicleData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/VehicleData.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/weapons/speeder_blaster.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+vehicle_name = "Speeder Bike"
+max_health = 90.0
+max_shield = 60.0
+shield_regen_per_second = 18.0
+shield_regen_delay = 4.0
+max_speed = 16.0
+acceleration = 14.0
+turn_rate_degrees = 140.0
+is_hover = true
+hover_height = 1.1
+primary_weapon = ExtResource("2")
+turret_weapon = null
+occupant_eject_damage = 25.0
+body_color = Color(0.75, 0.7, 0.55, 1)

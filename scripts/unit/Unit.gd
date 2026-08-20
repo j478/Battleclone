@@ -123,3 +123,20 @@ func respawn_at(spawn_transform: Transform3D) -> void:
 	visible = true
 	collision_shape.disabled = false
 	set_physics_process(true)
+
+## Called when the player boards a vehicle. Deliberately mirrors
+## _on_died's hide/disable — the soldier is paused and undamageable
+## while seated, not dead, so Health is untouched.
+func enter_vehicle() -> void:
+	set_physics_process(false)
+	visible = false
+	collision_shape.disabled = true
+
+## Called when the player exits (or is ejected from) a vehicle.
+## Mirrors respawn_at but again leaves Health alone.
+func exit_vehicle(exit_transform: Transform3D) -> void:
+	global_transform = exit_transform
+	velocity = Vector3.ZERO
+	visible = true
+	collision_shape.disabled = false
+	set_physics_process(true)

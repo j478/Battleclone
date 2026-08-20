@@ -17,11 +17,22 @@ const FOV_LERP_SPEED := 10.0
 @onready var tps_camera: Camera3D = $Pivot/SpringArm3D/TPSCamera
 @onready var fps_camera: Camera3D = $Pivot/FPSCamera
 
+## Rigs that aren't the player's own body on spawn (vehicle seats) must
+## start false — Camera3D.current=true steals the viewport from
+## whatever else is currently active, so an unpossessed vehicle's rig
+## would otherwise yank the camera the instant it spawns. PlayerInput
+## calls activate() explicitly when this rig actually becomes current.
+@export var start_active: bool = true
+
 var is_first_person: bool = false
 var aiming: bool = false
 var _pitch: float = 0.0
 
 func _ready() -> void:
+	if start_active:
+		_set_active_camera()
+
+func activate() -> void:
 	_set_active_camera()
 
 func apply_mouse_delta(delta: Vector2) -> void:

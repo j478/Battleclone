@@ -37,7 +37,11 @@ func _on_player_class_chosen(class_data: ClassData) -> void:
 		player_unit = PLAYER_SOLDIER_SCENE.instantiate() as Unit
 		player_unit.faction_id = GameManager.LOCAL_PLAYER_FACTION
 		units_root.add_child(player_unit)
-		hud.bind_to_unit(player_unit)
+	# Rebind every spawn, not just the first: HUD hides the crosshair on
+	# death (HUD._on_unit_died) and nothing else ever shows it again --
+	# without rebinding here it stayed hidden for the rest of the match
+	# after the player's first death.
+	hud.bind_to_unit(player_unit)
 	player_unit.apply_class(class_data)
 	var spawn_post: CommandPost = _pick_spawn_post(GameManager.LOCAL_PLAYER_FACTION)
 	player_unit.respawn_at(_jittered_spawn_transform(spawn_post) if spawn_post else player_unit.global_transform)

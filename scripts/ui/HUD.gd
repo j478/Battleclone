@@ -184,7 +184,12 @@ func _push_kill_feed(text: String) -> void:
 	label.text = text
 	kill_feed.add_child(label)
 	_kill_feed_entries.append({"label": label, "expires_at_msec": Time.get_ticks_msec() + int(KILL_FEED_LIFETIME * 1000.0)})
-	while kill_feed.get_child_count() > MAX_KILL_FEED_ENTRIES:
+	# queue_free() doesn't reduce get_child_count() until end of frame, so
+	# this must be "if", not "while" -- a while here spins forever the
+	# instant eviction is needed, since the count never drops within this
+	# call. Only one entry is ever added per call, so one eviction is
+	# always enough.
+	if kill_feed.get_child_count() > MAX_KILL_FEED_ENTRIES:
 		var oldest: Node = kill_feed.get_child(0)
 		oldest.queue_free()
 		var kept: Array = []

@@ -6,8 +6,16 @@ class_name AIBrain
 ## keyboard/mouse. Decision-making (target/CP selection, line-of-sight
 ## checks) is timer-staggered per bot rather than every physics frame,
 ## so bot count scales without spiking CPU.
+##
+## Also drives vehicles: a bot can walk to, board, drive/gun, and
+## dismount a vehicle using this same staggered-decision shape. It calls
+## VehicleSeat.occupy()/force_exit_vehicle() directly (bypassing the
+## Area3D proximity signal, which stays player-only) and writes the same
+## Vehicle intent fields PlayerInput._drive_vehicle() does — this file is
+## the only thing that changes to add AI vehicle usage.
 
-enum BotState { ADVANCE, ENGAGE, CAPTURE }
+enum BotState { ADVANCE, ENGAGE, CAPTURE, SEEK_VEHICLE }
+enum VehicleBotState { DRIVE_TO_OBJECTIVE, ENGAGE }
 
 const DECISION_INTERVAL_MIN := 0.35
 const DECISION_INTERVAL_MAX := 0.6
@@ -16,19 +24,46 @@ const CAPTURE_RADIUS_SLOP := 1.5
 const ARRIVE_DISTANCE := 1.0
 const SPLASH_SAFETY_MARGIN := 1.3 # don't fire a splash weapon if the blast would reach us
 
+const VEHICLE_SEEK_MIN_OBJECTIVE_DIST := 20.0 # skip the vehicle scan entirely for close objectives
+const VEHICLE_SEEK_MAX_DETOUR := 18.0 # hard cap, no long detours to reach a vehicle
+const VEHICLE_SEEK_TIME_MARGIN := 0.85 # driving must be meaningfully faster, not marginally
+const VEHICLE_SEAT_ARRIVE_DISTANCE := 3.0
+const VEHICLE_SEEK_TIMEOUT := 10.0 # give up and go on foot if a seat can't be reached
+const VEHICLE_RESERVATION_DURATION := 6.0
+const VEHICLE_ENGAGE_RANGE := 55.0
+const VEHICLE_DISMOUNT_RADIUS := 6.0 # dismount once this close to the objective to actually capture it
+const VEHICLE_STEER_FULL_LOCK_DEG := 45.0
+const VEHICLE_THROTTLE_EASE_DEG := 90.0
+const VEHICLE_THROTTLE_MIN := 0.2 # keeps the vehicle pivoting toward target instead of stalling
+const VEHICLE_FIRE_HEADING_TOLERANCE_DEG := 15.0 # forward-fixed weapons shouldn't fire while badly misaligned
+
 @onready var unit: Unit = get_parent() as Unit
 @onready var nav_agent: NavigationAgent3D = unit.get_node("NavigationAgent3D") as NavigationAgent3D
 
 var _bot_state: BotState = BotState.ADVANCE
+var _vehicle_state: VehicleBotState = VehicleBotState.DRIVE_TO_OBJECTIVE
 var _decision_timer: float = randf_range(0.0, DECISION_INTERVAL_MAX)
 var _target_post: Node = null
 var _target_enemy = null # Unit or Vehicle — duck-typed (faction_id, health, global_position)
+
+# Vehicle seeking (on foot, walking toward a reserved seat)
+var _target_vehicle: Vehicle = null
+var _target_seat: VehicleSeat = null
+var _seek_vehicle_started_msec: int = 0
+
+# Vehicle possession (mirrors PlayerInput's possessed_seat/possessed_vehicle)
+var possessed_seat: VehicleSeat = null
+var possessed_vehicle: Vehicle = null
 
 func _ready() -> void:
 	nav_agent.path_desired_distance = 0.75
 	nav_agent.target_desired_distance = 1.0
 
 func _physics_process(delta: float) -> void:
+	if possessed_vehicle:
+		_physics_process_vehicle(delta)
+		return
+
 	if unit.health.is_dead:
 		return
 
@@ -40,49 +75,92 @@ func _physics_process(delta: float) -> void:
 	match _bot_state:
 		BotState.ENGAGE:
 			_tick_engage()
+		BotState.SEEK_VEHICLE:
+			_tick_seek_vehicle()
 		_:
 			_tick_navigate()
 
+func _physics_process_vehicle(delta: float) -> void:
+	if not is_instance_valid(possessed_vehicle) or possessed_vehicle.health.is_dead:
+		return
+
+	_decision_timer -= delta
+	if _decision_timer <= 0.0:
+		_decision_timer = randf_range(DECISION_INTERVAL_MIN, DECISION_INTERVAL_MAX)
+		if possessed_seat.seat_role == VehicleSeat.SeatRole.DRIVER:
+			_make_vehicle_driver_decision()
+		else:
+			_make_vehicle_gunner_decision()
+
+	if not possessed_vehicle: # a decision this tick may have dismounted us (e.g. driver left)
+		return
+
+	if possessed_seat.seat_role == VehicleSeat.SeatRole.DRIVER:
+		match _vehicle_state:
+			VehicleBotState.ENGAGE:
+				_tick_vehicle_engage()
+			_:
+				_tick_vehicle_drive_to_objective()
+	else:
+		_tick_vehicle_gunner()
+
+# ---------------------------------------------------------------------------
+# Foot decision-making
+# ---------------------------------------------------------------------------
+
 func _make_decision() -> void:
-	_target_enemy = _find_visible_enemy()
+	_target_enemy = _find_visible_enemy(unit.global_position, ENGAGE_RANGE)
 	if _target_enemy:
+		_release_vehicle_claim()
 		_bot_state = BotState.ENGAGE
 		return
 
-	_target_post = _find_capture_target()
-	if _target_post:
-		nav_agent.target_position = _target_post.global_position
-		var dist: float = unit.global_position.distance_to(_target_post.global_position)
-		var radius: float = _target_post.capture_radius if "capture_radius" in _target_post else 4.0
-		_bot_state = BotState.CAPTURE if dist <= radius + CAPTURE_RADIUS_SLOP else BotState.ADVANCE
-	else:
-		_bot_state = BotState.ADVANCE
+	if _bot_state == BotState.SEEK_VEHICLE and _target_seat and is_instance_valid(_target_seat) and _target_seat.can_occupy(unit):
+		return # keep pursuing the same reserved seat instead of re-rolling every decision tick
 
-func _find_visible_enemy():
+	_target_post = _find_capture_target()
+	if not _target_post:
+		_release_vehicle_claim()
+		_bot_state = BotState.ADVANCE
+		return
+
+	if _evaluate_vehicle_option():
+		return
+
+	_release_vehicle_claim()
+	nav_agent.target_position = _target_post.global_position
+	var dist: float = unit.global_position.distance_to(_target_post.global_position)
+	var radius: float = _target_post.capture_radius if "capture_radius" in _target_post else 4.0
+	_bot_state = BotState.CAPTURE if dist <= radius + CAPTURE_RADIUS_SLOP else BotState.ADVANCE
+
+func _find_visible_enemy(origin: Vector3, max_range: float):
 	var closest = null
-	var closest_dist: float = ENGAGE_RANGE
+	var closest_dist: float = max_range
 	var candidates: Array = []
 	candidates.append_array(unit.get_tree().get_nodes_in_group("units"))
 	candidates.append_array(unit.get_tree().get_nodes_in_group("vehicles"))
 	for node in candidates:
-		if node == unit:
+		if node == unit or node == possessed_vehicle:
 			continue
 		if node.faction_id == unit.faction_id or node.health.is_dead:
 			continue
-		var dist: float = unit.global_position.distance_to(node.global_position)
+		var dist: float = origin.distance_to(node.global_position)
 		if dist >= closest_dist:
 			continue
-		if _has_line_of_sight(node):
+		if _has_line_of_sight(origin, node):
 			closest = node
 			closest_dist = dist
 	return closest
 
-func _has_line_of_sight(target) -> bool:
-	var from: Vector3 = unit.global_position + Vector3.UP
+func _has_line_of_sight(origin: Vector3, target) -> bool:
+	var from: Vector3 = origin + Vector3.UP
 	var to: Vector3 = target.global_position + Vector3.UP
 	var space_state: PhysicsDirectSpaceState3D = unit.get_world_3d().direct_space_state
 	var query := PhysicsRayQueryParameters3D.create(from, to)
-	query.exclude = [unit.get_rid()]
+	var exclude: Array = [unit.get_rid()]
+	if possessed_vehicle and is_instance_valid(possessed_vehicle):
+		exclude.append(possessed_vehicle.get_rid())
+	query.exclude = exclude
 	query.collision_mask = (1 << 0) | (1 << 1)
 	var result: Dictionary = space_state.intersect_ray(query)
 	return result.is_empty() or result.collider == target
@@ -106,7 +184,17 @@ func _tick_navigate() -> void:
 	var next_point: Vector3 = nav_agent.get_next_path_position()
 	var to_point: Vector3 = next_point - unit.global_position
 	to_point.y = 0.0
-	if to_point.length() < ARRIVE_DISTANCE:
+	# Only bail on a genuinely degenerate (near-zero) direction, to avoid
+	# NaN from normalizing a zero vector. Do NOT early-stop just because
+	# the *next intermediate waypoint* is close (that used to compare
+	# against ARRIVE_DISTANCE) -- a freshly computed short path can have
+	# its first waypoint already within that distance of the bot's
+	# current position, which permanently zeroed movement and left the
+	# bot deadlocked (zero velocity forever, never close enough to
+	# is_navigation_finished() to advance past it). Whether we've
+	# actually arrived at the *destination* is what is_navigation_finished()
+	# above already answers correctly.
+	if to_point.length_squared() < 0.0001:
 		unit.move_input = Vector2.ZERO
 		return
 	var desired: Vector3 = to_point.normalized()
@@ -137,4 +225,245 @@ func _tick_engage() -> void:
 	elif dist > ENGAGE_RANGE * 0.6:
 		world_move = forward # close the distance a bit
 	unit.move_input = Vector2(world_move.dot(right), world_move.dot(forward))
-	unit.fire_held = _has_line_of_sight(_target_enemy) and not too_close_for_splash
+	unit.fire_held = _has_line_of_sight(unit.global_position, _target_enemy) and not too_close_for_splash
+
+# ---------------------------------------------------------------------------
+# Vehicle seeking / boarding / dismounting (foot-side)
+# ---------------------------------------------------------------------------
+
+func _evaluate_vehicle_option() -> bool:
+	var objective_pos: Vector3 = _target_post.global_position
+	var dist_to_objective: float = unit.global_position.distance_to(objective_pos)
+	if dist_to_objective < VEHICLE_SEEK_MIN_OBJECTIVE_DIST:
+		return false
+
+	var move_speed: float = unit.class_data.move_speed if unit.class_data else 5.5
+	var walk_time_direct: float = dist_to_objective / move_speed
+
+	var best_vehicle: Vehicle = null
+	var best_seat: VehicleSeat = null
+	var best_detour_time: float = INF
+	var best_gunner_vehicle: Vehicle = null
+	var best_gunner_seat: VehicleSeat = null
+	var best_gunner_dist: float = INF
+
+	var candidates: Array = []
+	candidates.append_array(unit.get_tree().get_nodes_in_group("vehicles"))
+	for node in candidates:
+		var vehicle: Vehicle = node
+		if not vehicle or (vehicle.faction_id != -1 and vehicle.faction_id != unit.faction_id):
+			continue
+		if vehicle.health.is_dead:
+			continue
+		var dist_to_vehicle: float = unit.global_position.distance_to(vehicle.global_position)
+		if dist_to_vehicle > VEHICLE_SEEK_MAX_DETOUR:
+			continue
+
+		var driver_seat: VehicleSeat = vehicle.driver_seat
+		if driver_seat and driver_seat.can_occupy(unit) and not driver_seat.is_reserved_by_other(self):
+			var vehicle_speed: float = vehicle.vehicle_data.max_speed if vehicle.vehicle_data else 10.0
+			var detour_time: float = dist_to_vehicle / move_speed + objective_pos.distance_to(vehicle.global_position) / vehicle_speed
+			if detour_time < best_detour_time:
+				best_detour_time = detour_time
+				best_vehicle = vehicle
+				best_seat = driver_seat
+
+		var gunner_seat: VehicleSeat = vehicle.gunner_seat
+		if gunner_seat and driver_seat and driver_seat.occupant_unit and gunner_seat.can_occupy(unit) and not gunner_seat.is_reserved_by_other(self):
+			if dist_to_vehicle < best_gunner_dist:
+				best_gunner_dist = dist_to_vehicle
+				best_gunner_vehicle = vehicle
+				best_gunner_seat = gunner_seat
+
+	if best_vehicle and best_detour_time < walk_time_direct * VEHICLE_SEEK_TIME_MARGIN:
+		if _try_commit_seek(best_vehicle, best_seat):
+			return true
+
+	if best_gunner_vehicle:
+		if _try_commit_seek(best_gunner_vehicle, best_gunner_seat):
+			return true
+
+	return false
+
+func _try_commit_seek(vehicle: Vehicle, seat: VehicleSeat) -> bool:
+	if not seat.reserve(self, VEHICLE_RESERVATION_DURATION):
+		return false
+	_target_vehicle = vehicle
+	_target_seat = seat
+	_seek_vehicle_started_msec = Time.get_ticks_msec()
+	# Ground-flattened on purpose: hover vehicles' Y jitters slightly every
+	# physics frame from their own hover-correction, and NavigationAgent3D
+	# recomputes its path whenever target_position changes — feeding it a
+	# jittery Y (even set only once, but especially if re-set later) risks
+	# constant path thrashing that never lets the bot settle into moving.
+	nav_agent.target_position = Vector3(seat.global_position.x, unit.global_position.y, seat.global_position.z)
+	_bot_state = BotState.SEEK_VEHICLE
+	return true
+
+func _release_vehicle_claim() -> void:
+	if _target_seat and is_instance_valid(_target_seat):
+		_target_seat.release_reservation(self)
+	_target_seat = null
+	_target_vehicle = null
+
+func _tick_seek_vehicle() -> void:
+	if not _target_seat or not is_instance_valid(_target_seat) or not is_instance_valid(_target_vehicle):
+		_release_vehicle_claim()
+		_bot_state = BotState.ADVANCE
+		return
+	if not _target_seat.can_occupy(unit):
+		_release_vehicle_claim()
+		_bot_state = BotState.ADVANCE
+		return
+	if Time.get_ticks_msec() - _seek_vehicle_started_msec > VEHICLE_SEEK_TIMEOUT * 1000.0:
+		_release_vehicle_claim()
+		_bot_state = BotState.ADVANCE
+		return
+
+	var to_seat: Vector3 = _target_seat.global_position - unit.global_position
+	to_seat.y = 0.0 # horizontal-only: don't let a hovering seat's height affect arrival
+	var dist: float = to_seat.length()
+	if dist <= VEHICLE_SEAT_ARRIVE_DISTANCE:
+		_board_vehicle()
+		return
+
+	_tick_navigate()
+
+func _board_vehicle() -> void:
+	var seat: VehicleSeat = _target_seat
+	var vehicle: Vehicle = _target_vehicle
+	_target_seat = null
+	_target_vehicle = null
+	if not seat.can_occupy(unit):
+		_bot_state = BotState.ADVANCE
+		return
+	seat.occupy(unit, self)
+	possessed_seat = seat
+	possessed_vehicle = vehicle
+	if seat.seat_role == VehicleSeat.SeatRole.DRIVER:
+		_vehicle_state = VehicleBotState.DRIVE_TO_OBJECTIVE
+	_decision_timer = 0.0
+
+func _exit_vehicle_ai() -> void:
+	var seat: VehicleSeat = possessed_seat
+	if not seat:
+		return
+	var xform: Transform3D = seat.exit_seat()
+	unit.exit_vehicle(xform)
+	possessed_seat = null
+	possessed_vehicle = null
+	_bot_state = BotState.ADVANCE
+	_decision_timer = 0.0
+
+## Called by VehicleSeat when the vehicle is destroyed while occupied —
+## the AI equivalent of PlayerInput.force_exit_vehicle().
+func force_exit_vehicle(instigator: Node, eject_damage: float) -> void:
+	var seat: VehicleSeat = possessed_seat
+	if not seat:
+		return
+	var xform: Transform3D = seat.exit_seat()
+	unit.exit_vehicle(xform)
+	possessed_seat = null
+	possessed_vehicle = null
+	_bot_state = BotState.ADVANCE
+	_decision_timer = 0.0
+	unit.health.apply_damage(eject_damage, instigator)
+
+# ---------------------------------------------------------------------------
+# Driving
+# ---------------------------------------------------------------------------
+
+func _make_vehicle_driver_decision() -> void:
+	_target_enemy = _find_visible_enemy(possessed_vehicle.global_position, VEHICLE_ENGAGE_RANGE)
+	if _target_enemy:
+		_vehicle_state = VehicleBotState.ENGAGE
+		return
+	_target_post = _find_capture_target()
+	_vehicle_state = VehicleBotState.DRIVE_TO_OBJECTIVE
+
+func _tick_vehicle_drive_to_objective() -> void:
+	if not _target_post or not is_instance_valid(_target_post):
+		possessed_vehicle.move_input = Vector2.ZERO
+		possessed_vehicle.fire_held = false
+		return
+
+	var radius: float = _target_post.capture_radius if "capture_radius" in _target_post else 4.0
+	var dist: float = possessed_vehicle.global_position.distance_to(_target_post.global_position)
+	if dist <= radius + VEHICLE_DISMOUNT_RADIUS:
+		_exit_vehicle_ai()
+		return
+
+	possessed_vehicle.move_input = _compute_steer_throttle(possessed_vehicle, _target_post.global_position)
+	possessed_vehicle.fire_held = false
+
+func _tick_vehicle_engage() -> void:
+	if not is_instance_valid(_target_enemy) or _target_enemy.health.is_dead:
+		_vehicle_state = VehicleBotState.DRIVE_TO_OBJECTIVE
+		return
+
+	var vehicle: Vehicle = possessed_vehicle
+	var to_enemy: Vector3 = _target_enemy.global_position - vehicle.global_position
+	var dist: float = Vector2(to_enemy.x, to_enemy.z).length()
+
+	var weapon_data: WeaponData = vehicle.weapon_handler.weapon_data
+	var blast_radius: float = weapon_data.splash_radius if weapon_data else 0.0
+	var too_close: bool = blast_radius > 0.0 and dist < blast_radius * SPLASH_SAFETY_MARGIN
+
+	var target_point: Vector3 = _target_enemy.global_position
+	if too_close:
+		target_point = vehicle.global_position - to_enemy.normalized() * 12.0 # back off
+
+	vehicle.move_input = _compute_steer_throttle(vehicle, target_point)
+
+	var heading_error: float = _heading_error(vehicle, _target_enemy.global_position)
+	var aligned: bool = abs(rad_to_deg(heading_error)) <= VEHICLE_FIRE_HEADING_TOLERANCE_DEG
+	vehicle.fire_held = not too_close and aligned and _has_line_of_sight(vehicle.global_position, _target_enemy)
+
+# ---------------------------------------------------------------------------
+# Gunning
+# ---------------------------------------------------------------------------
+
+func _make_vehicle_gunner_decision() -> void:
+	var driver_seat: VehicleSeat = possessed_vehicle.driver_seat
+	if not driver_seat or not driver_seat.occupant_unit:
+		_exit_vehicle_ai() # driver left, no point staying
+		return
+	_target_enemy = _find_visible_enemy(possessed_vehicle.global_position, VEHICLE_ENGAGE_RANGE)
+
+func _tick_vehicle_gunner() -> void:
+	var vehicle: Vehicle = possessed_vehicle
+	if not is_instance_valid(_target_enemy) or _target_enemy.health.is_dead:
+		vehicle.turret_fire_held = false
+		return
+
+	var turret_pivot: Node3D = vehicle.turret_pivot
+	var origin: Vector3 = turret_pivot.global_position if turret_pivot else vehicle.global_position
+	vehicle.turret_look_direction = (_target_enemy.global_position - origin).normalized()
+	vehicle.turret_fire_held = _has_line_of_sight(origin, _target_enemy)
+
+# ---------------------------------------------------------------------------
+# Shared steering math
+# ---------------------------------------------------------------------------
+
+func _heading_error(vehicle: Vehicle, target_pos: Vector3) -> float:
+	var to_target: Vector3 = target_pos - vehicle.global_position
+	to_target.y = 0.0
+	if to_target.length_squared() < 0.0001:
+		return 0.0
+	var forward: Vector3 = -vehicle.global_transform.basis.z
+	forward.y = 0.0
+	return forward.normalized().signed_angle_to(to_target.normalized(), Vector3.UP)
+
+func _compute_steer_throttle(vehicle: Vehicle, target_pos: Vector3) -> Vector2:
+	var to_target: Vector3 = target_pos - vehicle.global_position
+	to_target.y = 0.0
+	if to_target.length() < 1.0:
+		return Vector2.ZERO
+	var heading_error: float = _heading_error(vehicle, target_pos)
+	# Negated: confirmed live that the unnegated sign steered the vehicle
+	# away from its target (Vehicle._physics_process's
+	# rotate_y(-move_input.x * turn_rate * delta) turns the opposite way
+	# from what signed_angle_to's convention would suggest).
+	var steer: float = clamp(-heading_error / deg_to_rad(VEHICLE_STEER_FULL_LOCK_DEG), -1.0, 1.0)
+	var throttle: float = clamp(1.0 - abs(heading_error) / deg_to_rad(VEHICLE_THROTTLE_EASE_DEG), VEHICLE_THROTTLE_MIN, 1.0)
+	return Vector2(steer, throttle)

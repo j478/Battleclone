@@ -22,6 +22,7 @@ var _bound_weapon_handler: WeaponHandler
 var _bound_target: Node # whichever Unit/Vehicle is currently bound
 var _bound_vehicle: Vehicle
 var _bound_seat_role: int = -1 # VehicleSeat.SeatRole, or -1 when not driving
+var _kill_feed_entries: Array = [] # [{label: Label, expires_at_msec: int}]
 
 func _ready() -> void:
 	EventBus.tickets_changed.connect(_on_tickets_changed)
@@ -61,6 +62,8 @@ func bind_to_vehicle(vehicle: Vehicle, seat: VehicleSeat) -> void:
 ## out when that direction isn't even on screen. The gunner's turret DOES
 ## follow the camera, so it keeps the normal centered crosshair.
 func _process(_delta: float) -> void:
+	_update_kill_feed_expiry()
+
 	if not crosshair.visible:
 		return
 	if _bound_vehicle and is_instance_valid(_bound_vehicle) and _bound_seat_role == VehicleSeat.SeatRole.DRIVER:
@@ -171,16 +174,39 @@ func _display_name_of(unit: Node) -> String:
 		return unit.display_name
 	return unit.name
 
+## Tracks its own entries and expires them from _process instead of a
+## per-entry SceneTreeTimer+lambda: that pattern raced against the
+## count-based eviction below (an evicted label could still have a
+## pending timer holding a now-freed reference, which errors when
+## Godot tries to invoke the callable with a freed captured Object).
 func _push_kill_feed(text: String) -> void:
 	var label := Label.new()
 	label.text = text
 	kill_feed.add_child(label)
-	if kill_feed.get_child_count() > MAX_KILL_FEED_ENTRIES:
-		kill_feed.get_child(0).queue_free()
-	get_tree().create_timer(KILL_FEED_LIFETIME).timeout.connect(func():
-		if is_instance_valid(label):
+	_kill_feed_entries.append({"label": label, "expires_at_msec": Time.get_ticks_msec() + int(KILL_FEED_LIFETIME * 1000.0)})
+	while kill_feed.get_child_count() > MAX_KILL_FEED_ENTRIES:
+		var oldest: Node = kill_feed.get_child(0)
+		oldest.queue_free()
+		var kept: Array = []
+		for entry in _kill_feed_entries:
+			if entry["label"] != oldest:
+				kept.append(entry)
+		_kill_feed_entries = kept
+
+func _update_kill_feed_expiry() -> void:
+	if _kill_feed_entries.is_empty():
+		return
+	var now: int = Time.get_ticks_msec()
+	var remaining: Array = []
+	for entry in _kill_feed_entries:
+		var label: Label = entry["label"]
+		if not is_instance_valid(label):
+			continue
+		if now >= entry["expires_at_msec"]:
 			label.queue_free()
-	)
+		else:
+			remaining.append(entry)
+	_kill_feed_entries = remaining
 
 func _on_match_ended(winning_faction_id: int) -> void:
 	var name := "Faction A" if winning_faction_id == GameManager.FACTION_A_ID else "Faction B"

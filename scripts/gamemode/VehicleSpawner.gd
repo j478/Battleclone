@@ -14,7 +14,14 @@ class_name VehicleSpawner
 var _current_vehicle: Vehicle
 
 func _ready() -> void:
-	_spawn()
+	# Godot calls children's _ready() before their parent's, so spawning
+	# here directly would place this vehicle's collider before
+	# ConquestMode._ready() bakes the navmesh — carving a permanent hole
+	# in it exactly where the vehicle sits, which made it unreachable by
+	# NavigationAgent3D pathing (bots would seek it forever, never close
+	# enough to board). Deferring one frame runs this after the whole
+	# initial ready cascade, including the bake, finishes.
+	call_deferred("_spawn")
 
 func _spawn() -> void:
 	if not vehicle_scene or not vehicle_data:

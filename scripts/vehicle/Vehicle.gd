@@ -63,8 +63,14 @@ func apply_vehicle_data(data: VehicleData) -> void:
 func get_health() -> Health:
 	return health
 
+const FALL_DEATH_Y := -20.0 # safety net: driving off the map edge shouldn't fall forever
+
 func _physics_process(delta: float) -> void:
 	if health.is_dead:
+		return
+
+	if global_position.y < FALL_DEATH_Y:
+		health.apply_damage(health.max_health + health.max_shield, null)
 		return
 
 	var speed: float = vehicle_data.max_speed if vehicle_data else 10.0

@@ -22,6 +22,13 @@ var vehicle: Vehicle
 var occupant_unit: Unit
 var occupant_player_input: Node
 
+## Soft claim so multiple AI bots don't all converge on one empty seat.
+## Auto-expires so a bot that dies or gets distracted mid-walk doesn't
+## permanently lock a seat other bots can see is empty. A human player
+## can still walk up and take a reserved seat regardless.
+var reserved_by: Node = null
+var _reservation_expires_msec: int = 0
+
 var _nearby_player_input: Node
 
 func _ready() -> void:
@@ -49,7 +56,24 @@ func _on_body_exited(body: Node) -> void:
 func can_occupy(unit: Unit) -> bool:
 	return occupant_unit == null and (vehicle.faction_id == -1 or unit.faction_id == vehicle.faction_id)
 
+func reserve(claimant: Node, duration_seconds: float) -> bool:
+	if occupant_unit != null or is_reserved_by_other(claimant):
+		return false
+	reserved_by = claimant
+	_reservation_expires_msec = Time.get_ticks_msec() + int(duration_seconds * 1000.0)
+	return true
+
+func release_reservation(claimant: Node) -> void:
+	if reserved_by == claimant:
+		reserved_by = null
+
+func is_reserved_by_other(claimant: Node) -> bool:
+	if reserved_by == null or not is_instance_valid(reserved_by) or reserved_by == claimant:
+		return false
+	return Time.get_ticks_msec() < _reservation_expires_msec
+
 func occupy(unit: Unit, player_input: Node) -> void:
+	reserved_by = null
 	occupant_unit = unit
 	occupant_player_input = player_input
 	unit.enter_vehicle()

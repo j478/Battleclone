@@ -16,4 +16,4 @@ is_automatic = true
 splash_radius = 0.0
 splash_damage = 0.0
 projectile_speed = 25.0
-tracer_speed = 220.0
+tracer_speed = 90.0

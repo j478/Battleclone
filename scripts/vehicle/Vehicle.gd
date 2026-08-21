@@ -156,14 +156,14 @@ func _process_hover(delta: float, target_velocity: Vector3) -> void:
 	else:
 		velocity.y -= AIR_GRAVITY * delta
 
-## Called by VehicleSeat.occupy() when a driver boards a FLIGHT vehicle.
-## Boarding one while it's sitting on the ground and immediately pitching
-## hard (nose into the pad especially) can wedge the hull against the
-## ground collider in ways move_and_slide() doesn't recover from
-## gracefully. Rather than patching collision response for every
-## possible ground-contact angle, force a brief, input-ignoring vertical
-## climb to a safe height first -- the BFII fighters did the same thing,
-## auto-lifting a few feet the moment you got in.
+## Triggered by the player (jump, see PlayerInput) once they're ready to
+## fly, not automatically on boarding -- the ship stays parked and fully
+## locked (_process_parked) until they ask for this. Rising straight up
+## first, ignoring attitude input for the climb, sidesteps ever pitching
+## hard into the ground collider right at liftoff (nose into the pad
+## especially, which move_and_slide() doesn't recover from gracefully)
+## without having to patch collision response for every possible
+## ground-contact angle.
 func begin_flight_liftoff() -> void:
 	_flight_yaw = rotation.y
 	_flight_pitch = 0.0

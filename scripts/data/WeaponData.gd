@@ -22,3 +22,11 @@ enum FireMode { HITSCAN, PROJECTILE, HEAL }
 ## runs out -- a thrown grenade, not an impact weapon like the rocket
 ## launcher (which leaves this at 0).
 @export var fuse_time: float = 0.0
+
+## Stand-in held-weapon model, shown at the wielder's Muzzle mount and
+## swapped whenever the active weapon changes (see Unit.gd). Grey-box
+## sized/colored per weapon rather than a real asset, same spirit as the
+## rest of this project's primitive art.
+@export var model_length: float = 0.6
+@export var model_width: float = 0.09
+@export var model_color: Color = Color(0.15, 0.15, 0.18)

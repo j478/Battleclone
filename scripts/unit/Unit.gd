@@ -21,6 +21,7 @@ var display_name: String = "Soldier"
 @onready var grenade_handler: WeaponHandler = get_node_or_null("GrenadeHandler")
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var aim_pivot: Node3D = $AimPivot
+@onready var weapon_mesh: MeshInstance3D = get_node_or_null("AimPivot/WeaponMesh")
 
 var move_input: Vector2 = Vector2.ZERO # x = strafe, y = forward
 var look_direction: Vector3 = Vector3.FORWARD
@@ -58,6 +59,7 @@ func apply_class(data: ClassData) -> void:
 		grenade_handler.equip(data.throwable, self)
 	active_weapon_slot = 0
 	weapon_switched.emit(weapon_handler)
+	_update_weapon_model(data.primary_weapon)
 
 	var camera_rig := get_node_or_null("CameraRig")
 	if camera_rig:
@@ -90,6 +92,25 @@ func _active_weapon_handler() -> WeaponHandler:
 	if active_weapon_slot == 1 and secondary_weapon_handler and secondary_weapon_handler.weapon_data:
 		return secondary_weapon_handler
 	return weapon_handler
+
+## Stand-in held-weapon model, sized/colored/positioned per WeaponData so
+## switching actually looks like switching. The mesh's front (muzzle
+## end) stays pinned to the Muzzle marker regardless of length -- only
+## its back end and overall size grow/shrink per weapon.
+func _update_weapon_model(data: WeaponData) -> void:
+	if not weapon_mesh or not data:
+		return
+	var box := weapon_mesh.mesh as BoxMesh
+	if not box:
+		box = BoxMesh.new()
+		weapon_mesh.mesh = box
+	box.size = Vector3(data.model_width, data.model_width, data.model_length)
+	weapon_mesh.position = Vector3(0.3, -0.2, -0.5 + data.model_length * 0.5)
+	var mat := weapon_mesh.get_surface_override_material(0) as StandardMaterial3D
+	if not mat:
+		mat = StandardMaterial3D.new()
+		weapon_mesh.set_surface_override_material(0, mat)
+	mat.albedo_color = data.model_color
 
 func _physics_process(delta: float) -> void:
 	if health.is_dead:
@@ -132,7 +153,9 @@ func _physics_process(delta: float) -> void:
 		switch_weapon_pressed = false
 		if secondary_weapon_handler and secondary_weapon_handler.weapon_data:
 			active_weapon_slot = 1 - active_weapon_slot
-			weapon_switched.emit(_active_weapon_handler())
+			var active: WeaponHandler = _active_weapon_handler()
+			weapon_switched.emit(active)
+			_update_weapon_model(active.weapon_data)
 
 	var active_handler: WeaponHandler = _active_weapon_handler()
 	var aim_transform: Transform3D = aim_pivot.global_transform if aim_pivot else global_transform

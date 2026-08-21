@@ -17,3 +17,6 @@ splash_radius = 5.0
 splash_damage = 55.0
 projectile_speed = 32.0
 tracer_speed = 240.0
+model_length = 0.9
+model_width = 0.16
+model_color = Color(0.25, 0.3, 0.15, 1)

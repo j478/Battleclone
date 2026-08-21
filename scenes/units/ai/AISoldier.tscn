@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3]
+[gd_scene load_steps=8 format=3]
 
 [ext_resource type="Script" path="res://scripts/unit/Unit.gd" id="1"]
 [ext_resource type="Script" path="res://scripts/unit/Health.gd" id="2"]
@@ -12,6 +12,9 @@ height = 1.8
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_1"]
 radius = 0.4
 height = 1.8
+
+[sub_resource type="BoxMesh" id="BoxMesh_weapon"]
+size = Vector3(0.09, 0.09, 0.65)
 
 [node name="AISoldier" type="CharacterBody3D"]
 collision_layer = 2
@@ -31,6 +34,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 0)
 
 [node name="Muzzle" type="Marker3D" parent="AimPivot"]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -0.2, -0.5)
+
+[node name="WeaponMesh" type="MeshInstance3D" parent="AimPivot"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.3, -0.2, -0.175)
+mesh = SubResource("BoxMesh_weapon")
 
 [node name="Health" type="Node" parent="."]
 script = ExtResource("2")

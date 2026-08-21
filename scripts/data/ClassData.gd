@@ -10,3 +10,9 @@ class_name ClassData
 @export var primary_weapon: WeaponData
 @export var secondary_weapon: WeaponData
 @export var body_color: Color = Color(0.6, 0.6, 0.65)
+
+## Per-decision-tick chance an AI bot on this class will go claim an
+## unclaimed starfighter (see AIBrain._maybe_seek_starfighter). Dial-able
+## per class so a future dedicated pilot class can set this much higher
+## without touching AIBrain.gd.
+@export_range(0.0, 1.0) var flight_seek_chance: float = 0.12

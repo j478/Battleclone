@@ -36,11 +36,19 @@ Also added, independent of any single bug: map-boundary steering (any AI vehicle
 
 ## Phase 3 — Flight and space combat
 
-- `AtmosphericFlightController` for in-map fighters/speeders (banking, throttle, altitude).
+**In-map atmospheric flight is done, player- and AI-usable**, built directly into `Vehicle.gd`/`VehicleData.gd` as a third `MovementType` (`GROUND`/`HOVER`/`FLIGHT`) rather than a separate controller class — the existing `Vehicle`/`VehicleSeat`/`AIBrain` architecture absorbed it cleanly. The starfighter (`scenes/vehicles/starfighter/`) rebuilds its hull's basis fresh each frame from persistent yaw/pitch scalars (matching `CameraRig`'s own pattern), has a BFII-style liftoff/landing sequence (grounded ships are fully input-locked — no pitch/yaw/throttle response at all — until `begin_flight_liftoff()`/`begin_flight_landing()` explicitly transitions them), and AI bots fly it for pure air-to-air dogfights (ground-strafing deliberately out of scope, a bigger follow-up). Lessons worth remembering if this code gets touched again:
+- The driver-heading crosshair built for ground/hover vehicles (projects the vehicle's forward onto screen, because those let the mouse look independently of steering) is *wrong* for flight, where the mouse drives the hull directly and aim is always dead-center — `HUD.gd` now branches on `movement_type` to pick the right crosshair behavior.
+- A vehicle sitting at rest still runs full physics every frame; nothing stopped it from responding to attitude/throttle input just because it happened to be parked. Fixed by an explicit `_grounded` lock state (`Vehicle._process_parked`) that only lifts through `begin_flight_liftoff()` — this is *why* liftoff/landing exist at all, not just cosmetic sequences.
+- AI pitch/yaw steering decomposes the aim problem to match `Vehicle`'s own yaw-then-pitch basis composition (`Basis(UP,yaw)*Basis(RIGHT,pitch)`) exactly, using `Vehicle.get_flight_yaw()`/`get_flight_pitch()` rather than re-deriving heading from the (possibly steeply pitched) 3D forward vector, which degenerates near vertical.
+- `Vehicle.gd` clamps the flight ceiling and softly contains the XZ boundary for everyone already, but has no altitude *floor* — fine for a human who can see terrain coming, not fine for AI pursuit. `AIBrain._steer_flight_toward` self-imposes one.
+- The chance a bot goes to fly is a per-`ClassData` field (`flight_seek_chance`), not a hardcoded constant, specifically so a future dedicated pilot class can set it much higher without touching `AIBrain.gd`.
+
+**Still to build:**
 - A `SpaceZone` scene: same `ConquestMode`-style root, but flight-only (no ground, no gravity), positioned at a large Y offset from the ground map so both can be loaded simultaneously without coordinate precision issues.
 - Space `CommandPost`s (subsystem objectives — shields, engines, hangar) register into the same shared `MatchState.command_posts` list ground posts use. No changes needed to `MatchState` itself.
 - Capital ship interiors: a hangar `NavigationRegion3D` sized like the ground map's, entered by flying a fighter into a landing-bay trigger volume.
-- **Troop transport/dropship** as a natural vehicle type here: the original BF2's AI transports landed at a friendly command post, picked up soldiers, then flew to and landed at an enemy post to deploy them — effectively a live preview of the flight-corridor mechanism above. Reuses the same `Vehicle`/`VehicleSeat` architecture from Phase 2 (multiple passenger seats, no weapon needed) plus whatever `AtmosphericFlightController`/`SpaceFlightController` this phase adds.
+- **Troop transport/dropship** as a natural vehicle type here: the original BF2's AI transports landed at a friendly command post, picked up soldiers, then flew to and landed at an enemy post to deploy them — effectively a live preview of the flight-corridor mechanism below. Reuses the same `Vehicle`/`VehicleSeat` architecture (multiple passenger seats, no weapon needed) plus whatever a zero-gravity `SpaceFlightController` this phase adds needs on top of the atmospheric one.
+- AI ground-attack (strafing runs on troops/vehicles) if wanted later — deliberately deferred from the air-to-air pass above.
 
 ## Phase 4 — Seamless ground↔space transition (the signature feature)
 

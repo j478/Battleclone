@@ -15,7 +15,7 @@ class_name AIBrain
 ## the only thing that changes to add AI vehicle usage.
 
 enum BotState { ADVANCE, ENGAGE, CAPTURE, SEEK_VEHICLE }
-enum VehicleBotState { DRIVE_TO_OBJECTIVE, ENGAGE }
+enum VehicleBotState { DRIVE_TO_OBJECTIVE, ENGAGE, FLIGHT_TAKEOFF, FLIGHT_PATROL, FLIGHT_ENGAGE }
 
 const DECISION_INTERVAL_MIN := 0.35
 const DECISION_INTERVAL_MAX := 0.6
@@ -39,6 +39,19 @@ const VEHICLE_FIRE_HEADING_TOLERANCE_DEG := 15.0 # forward-fixed weapons shouldn
 const MAP_BOUNDARY_LIMIT := 60.0 # ground extends to ~70; steer back well before actually reaching the edge
 const VEHICLE_OBSTACLE_LOOKAHEAD := 6.0
 
+const STARFIGHTER_SEEK_MAX_DIST := 40.0 # don't detour far on foot just to try for a fighter
+const FLIGHT_ENGAGE_RANGE := 120.0 # less than the cannon's range_meters -- commit before actually in range
+const FLIGHT_FIRE_TOLERANCE_DEG := 10.0
+const FLIGHT_STEER_FULL_LOCK_DEG := 35.0
+const FLIGHT_THROTTLE_EASE_DEG := 60.0
+const FLIGHT_THROTTLE_MIN := 0.35 # keep flying forward even mid-turn, never stall out
+const FLIGHT_MIN_ALTITUDE := 12.0 # Vehicle.gd has no floor of its own -- AI has to self-impose one
+const FLIGHT_MIN_ALTITUDE_CLIMB_TARGET := 30.0 # absolute altitude to climb toward once under the floor
+const FLIGHT_PATROL_MIN_ALT := 20.0
+const FLIGHT_PATROL_MAX_ALT := 55.0 # comfortably under Vehicle's flight_ceiling default of 70
+const FLIGHT_PATROL_RADIUS := 80.0 # comfortably inside Vehicle's FLIGHT_BOUNDARY_RADIUS of 100
+const FLIGHT_PATROL_ARRIVE_DIST := 8.0
+
 @onready var unit: Unit = get_parent() as Unit
 @onready var nav_agent: NavigationAgent3D = unit.get_node("NavigationAgent3D") as NavigationAgent3D
 
@@ -56,6 +69,9 @@ var _seek_vehicle_started_msec: int = 0
 # Vehicle possession (mirrors PlayerInput's possessed_seat/possessed_vehicle)
 var possessed_seat: VehicleSeat = null
 var possessed_vehicle: Vehicle = null
+
+# Flight patrol (wandering waypoint while no enemy fighter is visible)
+var _flight_patrol_target: Vector3 = Vector3.ZERO
 
 func _ready() -> void:
 	nav_agent.path_desired_distance = 0.75
@@ -101,6 +117,12 @@ func _physics_process_vehicle(delta: float) -> void:
 		match _vehicle_state:
 			VehicleBotState.ENGAGE:
 				_tick_vehicle_engage()
+			VehicleBotState.FLIGHT_TAKEOFF:
+				_tick_flight_takeoff()
+			VehicleBotState.FLIGHT_PATROL:
+				_tick_flight_patrol()
+			VehicleBotState.FLIGHT_ENGAGE:
+				_tick_flight_engage()
 			_:
 				_tick_vehicle_drive_to_objective()
 	else:
@@ -119,6 +141,9 @@ func _make_decision() -> void:
 
 	if _bot_state == BotState.SEEK_VEHICLE and _target_seat and is_instance_valid(_target_seat) and _target_seat.can_occupy(unit):
 		return # keep pursuing the same reserved seat instead of re-rolling every decision tick
+
+	if _maybe_seek_starfighter():
+		return
 
 	_target_post = _find_capture_target()
 	if not _target_post:
@@ -233,6 +258,39 @@ func _tick_engage() -> void:
 # Vehicle seeking / boarding / dismounting (foot-side)
 # ---------------------------------------------------------------------------
 
+## Opportunistic, chance-based (not scheduled/guaranteed): unlike
+## _evaluate_vehicle_option, this isn't about reaching a ground objective
+## faster, so it's a separate roll rather than folded into that function.
+## Self-limits to about one pilot per faction since a claimed/occupied
+## seat fails can_occupy/is_reserved_by_other for every other bot.
+func _maybe_seek_starfighter() -> bool:
+	if _bot_state == BotState.CAPTURE:
+		return false # don't abandon an active capture for a joyride
+	var chance: float = unit.class_data.flight_seek_chance if unit.class_data else 0.12
+	if randf() > chance:
+		return false
+	var fighter: Vehicle = _find_available_starfighter()
+	if not fighter:
+		return false
+	var seat: VehicleSeat = fighter.driver_seat
+	if not seat or not seat.can_occupy(unit) or seat.is_reserved_by_other(self):
+		return false
+	if unit.global_position.distance_to(fighter.global_position) > STARFIGHTER_SEEK_MAX_DIST:
+		return false
+	return _try_commit_seek(fighter, seat)
+
+func _find_available_starfighter() -> Vehicle:
+	for node in unit.get_tree().get_nodes_in_group("vehicles"):
+		var vehicle: Vehicle = node
+		if not vehicle or vehicle.health.is_dead:
+			continue
+		if vehicle.faction_id != -1 and vehicle.faction_id != unit.faction_id:
+			continue
+		if not vehicle.vehicle_data or vehicle.vehicle_data.movement_type != VehicleData.MovementType.FLIGHT:
+			continue
+		return vehicle
+	return null
+
 func _evaluate_vehicle_option() -> bool:
 	var objective_pos: Vector3 = _target_post.global_position
 	var dist_to_objective: float = unit.global_position.distance_to(objective_pos)
@@ -345,7 +403,11 @@ func _board_vehicle() -> void:
 	possessed_seat = seat
 	possessed_vehicle = vehicle
 	if seat.seat_role == VehicleSeat.SeatRole.DRIVER:
-		_vehicle_state = VehicleBotState.DRIVE_TO_OBJECTIVE
+		if vehicle.vehicle_data and vehicle.vehicle_data.movement_type == VehicleData.MovementType.FLIGHT:
+			vehicle.begin_flight_liftoff() # the AI equivalent of the player's jump-key press
+			_vehicle_state = VehicleBotState.FLIGHT_TAKEOFF
+		else:
+			_vehicle_state = VehicleBotState.DRIVE_TO_OBJECTIVE
 	_decision_timer = 0.0
 
 func _exit_vehicle_ai() -> void:
@@ -378,6 +440,10 @@ func force_exit_vehicle(instigator: Node, eject_damage: float) -> void:
 # ---------------------------------------------------------------------------
 
 func _make_vehicle_driver_decision() -> void:
+	if possessed_vehicle.vehicle_data and possessed_vehicle.vehicle_data.movement_type == VehicleData.MovementType.FLIGHT:
+		_make_flight_decision()
+		return
+
 	# Stick with the current target while it's still valid instead of
 	# re-scanning from scratch every decision tick: _find_visible_enemy's
 	# LOS raycast is a single ray at range, and a momentary miss (terrain,
@@ -448,6 +514,122 @@ func _tick_vehicle_engage() -> void:
 		vehicle.move_input = _compute_steer_throttle(vehicle, _target_enemy.global_position)
 
 	vehicle.fire_held = not too_close and aligned and in_firing_range and _has_line_of_sight(vehicle.global_position, _target_enemy)
+
+# ---------------------------------------------------------------------------
+# Flying (air-to-air only -- see AIBrain doc comment / plan for scope)
+# ---------------------------------------------------------------------------
+
+func _make_flight_decision() -> void:
+	if possessed_vehicle.is_flight_transitioning():
+		return # still climbing out; _tick_flight_takeoff() handles the transition onward
+
+	# Same anti-oscillation fix as ground vehicles: don't re-roll a still-
+	# valid target every tick, a momentary LOS miss shouldn't drop the fight.
+	if _vehicle_state == VehicleBotState.FLIGHT_ENGAGE and is_instance_valid(_target_enemy) and not _target_enemy.health.is_dead:
+		var dist_to_target: float = possessed_vehicle.global_position.distance_to(_target_enemy.global_position)
+		if dist_to_target <= FLIGHT_ENGAGE_RANGE * 1.2:
+			return
+
+	_target_enemy = _find_visible_flight_enemy()
+	_vehicle_state = VehicleBotState.FLIGHT_ENGAGE if _target_enemy else VehicleBotState.FLIGHT_PATROL
+
+## Deliberately separate from _find_visible_enemy (which returns Units
+## and Vehicles for foot/ground-vehicle combat) -- this only ever returns
+## other FLIGHT-type vehicles, enforcing the air-to-air-only scope
+## directly in the query instead of filtering after the fact.
+func _find_visible_flight_enemy():
+	var vehicle: Vehicle = possessed_vehicle
+	var closest: Vehicle = null
+	var closest_dist: float = FLIGHT_ENGAGE_RANGE
+	for node in unit.get_tree().get_nodes_in_group("vehicles"):
+		var other: Vehicle = node
+		if not other or other == vehicle or other.faction_id == vehicle.faction_id or other.health.is_dead:
+			continue
+		if not other.vehicle_data or other.vehicle_data.movement_type != VehicleData.MovementType.FLIGHT:
+			continue
+		var dist: float = vehicle.global_position.distance_to(other.global_position)
+		if dist >= closest_dist:
+			continue
+		if _has_line_of_sight(vehicle.global_position, other):
+			closest = other
+			closest_dist = dist
+	return closest
+
+func _tick_flight_takeoff() -> void:
+	if not possessed_vehicle.is_flight_transitioning():
+		_vehicle_state = VehicleBotState.FLIGHT_PATROL
+		_flight_patrol_target = Vector3.ZERO # force picking a fresh waypoint next tick
+
+func _tick_flight_patrol() -> void:
+	var vehicle: Vehicle = possessed_vehicle
+	if _flight_patrol_target == Vector3.ZERO or vehicle.global_position.distance_to(_flight_patrol_target) < FLIGHT_PATROL_ARRIVE_DIST:
+		_flight_patrol_target = _pick_patrol_point()
+	_steer_flight_toward(vehicle, _flight_patrol_target)
+	vehicle.fire_held = false
+
+func _tick_flight_engage() -> void:
+	if not is_instance_valid(_target_enemy) or _target_enemy.health.is_dead:
+		_vehicle_state = VehicleBotState.FLIGHT_PATROL
+		return
+
+	var vehicle: Vehicle = possessed_vehicle
+	_steer_flight_toward(vehicle, _target_enemy.global_position)
+
+	var to_target: Vector3 = _target_enemy.global_position - vehicle.global_position
+	var dist: float = to_target.length()
+	var forward: Vector3 = -vehicle.global_transform.basis.z
+	var aligned: bool = dist > 0.01 and forward.dot(to_target / dist) >= cos(deg_to_rad(FLIGHT_FIRE_TOLERANCE_DEG))
+
+	var weapon_data: WeaponData = vehicle.weapon_handler.weapon_data
+	var in_range: bool = weapon_data != null and dist <= weapon_data.range_meters * 0.85
+
+	vehicle.fire_held = aligned and in_range and _has_line_of_sight(vehicle.global_position, _target_enemy)
+
+## Decomposes the aim problem into independent yaw and pitch errors,
+## matching Vehicle._process_flight's own yaw-then-pitch composition
+## (Basis(UP,yaw) * Basis(RIGHT,pitch)) exactly rather than re-deriving
+## heading from the current (possibly pitched) 3D forward vector, which
+## degenerates as pitch approaches vertical. Used by both patrol and
+## engage. Also the one place AI has to self-impose a minimum altitude --
+## Vehicle.gd already clamps the ceiling and softly contains the XZ
+## boundary for everyone, but has no floor of its own.
+func _steer_flight_toward(vehicle: Vehicle, target_pos: Vector3) -> void:
+	var effective_target: Vector3 = target_pos
+	if vehicle.global_position.y < FLIGHT_MIN_ALTITUDE:
+		effective_target.y = max(effective_target.y, FLIGHT_MIN_ALTITUDE_CLIMB_TARGET)
+
+	var to_target: Vector3 = effective_target - vehicle.global_position
+	if to_target.length_squared() < 1.0:
+		vehicle.flight_yaw_input = 0.0
+		vehicle.flight_pitch_input = 0.0
+		vehicle.flight_throttle_input = FLIGHT_THROTTLE_MIN
+		return
+
+	# desired_yaw derived directly from Vehicle's own forward formula
+	# (forward = -basis.z, basis.z = Basis(UP,yaw)*(0,0,1) => forward =
+	# (-sin(yaw), 0, -cos(yaw))), solved for yaw given a target direction.
+	var desired_yaw: float = atan2(-to_target.x, -to_target.z)
+	var yaw_error: float = wrapf(desired_yaw - vehicle.get_flight_yaw(), -PI, PI)
+
+	var horizontal_dist: float = Vector2(to_target.x, to_target.z).length()
+	var desired_pitch: float = atan2(to_target.y, horizontal_dist)
+	var pitch_error: float = clamp(desired_pitch - vehicle.get_flight_pitch(), -PI, PI)
+
+	var full_lock: float = deg_to_rad(FLIGHT_STEER_FULL_LOCK_DEG)
+	# Negated, same as _compute_steer_throttle's ground-vehicle steer:
+	# flight_yaw_input is subtracted from _flight_yaw, so closing a
+	# positive error (need to increase _flight_yaw) needs negative input.
+	vehicle.flight_yaw_input = clamp(-yaw_error / full_lock, -1.0, 1.0)
+	vehicle.flight_pitch_input = clamp(pitch_error / full_lock, -1.0, 1.0)
+
+	var total_error_deg: float = rad_to_deg(abs(yaw_error) + abs(pitch_error))
+	vehicle.flight_throttle_input = clamp(1.0 - total_error_deg / FLIGHT_THROTTLE_EASE_DEG, FLIGHT_THROTTLE_MIN, 1.0)
+
+func _pick_patrol_point() -> Vector3:
+	var angle: float = randf_range(0.0, TAU)
+	var radius: float = randf_range(20.0, FLIGHT_PATROL_RADIUS)
+	var altitude: float = randf_range(FLIGHT_PATROL_MIN_ALT, FLIGHT_PATROL_MAX_ALT)
+	return Vector3(cos(angle) * radius, altitude, sin(angle) * radius)
 
 # ---------------------------------------------------------------------------
 # Gunning

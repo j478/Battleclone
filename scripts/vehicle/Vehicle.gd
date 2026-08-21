@@ -179,6 +179,12 @@ func is_grounded() -> bool:
 func is_flight_transitioning() -> bool:
 	return _liftoff_active or _landing_active
 
+func get_flight_yaw() -> float:
+	return _flight_yaw
+
+func get_flight_pitch() -> float:
+	return _flight_pitch
+
 func _process_liftoff(delta: float) -> void:
 	global_transform.basis = Basis(Vector3.UP, _flight_yaw)
 	velocity = Vector3.UP * LIFTOFF_RISE_SPEED

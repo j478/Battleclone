@@ -83,6 +83,18 @@ func exit_seat() -> Transform3D:
 	var xform: Transform3D = exit_point.global_transform if exit_point else global_transform
 	occupant_unit = null
 	occupant_player_input = null
+	# Nothing else ever clears Vehicle's intent fields -- without this, a
+	# vehicle just keeps driving/firing at whatever its last command was
+	# forever once abandoned, since its own _physics_process doesn't know
+	# or care whether anyone is still steering it. This is the one
+	# chokepoint every dismount path (player/AI, voluntary/forced) already
+	# routes through.
+	if vehicle:
+		if seat_role == SeatRole.DRIVER:
+			vehicle.move_input = Vector2.ZERO
+			vehicle.fire_held = false
+		else:
+			vehicle.turret_fire_held = false
 	vacated.emit(self)
 	return xform
 

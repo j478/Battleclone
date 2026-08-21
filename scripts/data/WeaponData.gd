@@ -16,3 +16,9 @@ enum FireMode { HITSCAN, PROJECTILE, HEAL }
 @export var splash_damage: float = 0.0
 @export var projectile_speed: float = 25.0 # only used for PROJECTILE fire mode
 @export var tracer_speed: float = 220.0 # visual-only bolt speed for HITSCAN
+
+## >0 makes a PROJECTILE bounce off whatever it hits (world or units)
+## instead of exploding on contact, and detonate purely when this timer
+## runs out -- a thrown grenade, not an impact weapon like the rocket
+## launcher (which leaves this at 0).
+@export var fuse_time: float = 0.0

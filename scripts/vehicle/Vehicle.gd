@@ -14,6 +14,8 @@ const FLIGHT_PITCH_LIMIT := 1.3962634 # 80 degrees
 const FLIGHT_BOUNDARY_RADIUS := 100.0 # soft push-back starts past this XZ distance from center
 const FLIGHT_BOUNDARY_PUSH := 20.0
 const BANK_LERP_SPEED := 6.0
+const LIFTOFF_HEIGHT := 4.0 # meters climbed automatically on boarding, BFII-style
+const LIFTOFF_RISE_SPEED := 5.0
 
 @export var faction_id: int = -1
 @export var vehicle_data: VehicleData
@@ -46,6 +48,8 @@ var gunner_seat: VehicleSeat
 var _flight_yaw: float = 0.0
 var _flight_pitch: float = 0.0
 var _flight_initialized: bool = false
+var _liftoff_active: bool = false
+var _liftoff_target_y: float = 0.0
 
 func _ready() -> void:
 	add_to_group("vehicles")
@@ -145,6 +149,31 @@ func _process_hover(delta: float, target_velocity: Vector3) -> void:
 	else:
 		velocity.y -= AIR_GRAVITY * delta
 
+## Called by VehicleSeat.occupy() when a driver boards a FLIGHT vehicle.
+## Boarding one while it's sitting on the ground and immediately pitching
+## hard (nose into the pad especially) can wedge the hull against the
+## ground collider in ways move_and_slide() doesn't recover from
+## gracefully. Rather than patching collision response for every
+## possible ground-contact angle, force a brief, input-ignoring vertical
+## climb to a safe height first -- the BFII fighters did the same thing,
+## auto-lifting a few feet the moment you got in.
+func begin_flight_liftoff() -> void:
+	_flight_yaw = rotation.y
+	_flight_pitch = 0.0
+	_flight_initialized = true
+	_liftoff_active = true
+	_liftoff_target_y = global_position.y + LIFTOFF_HEIGHT
+	velocity = Vector3.ZERO
+
+func _process_liftoff(delta: float) -> void:
+	global_transform.basis = Basis(Vector3.UP, _flight_yaw)
+	velocity = Vector3.UP * LIFTOFF_RISE_SPEED
+	if global_position.y >= _liftoff_target_y:
+		_liftoff_active = false
+		velocity = Vector3.ZERO
+	if hull_mesh:
+		hull_mesh.rotation.z = lerp_angle(hull_mesh.rotation.z, 0.0, BANK_LERP_SPEED * delta)
+
 ## Rebuilds the hull's basis fresh every frame from two persistent,
 ## independently-clamped scalars rather than stacking rotate_y()/
 ## rotate_object_local() calls -- incremental local-axis rotation drifts
@@ -156,6 +185,10 @@ func _process_flight(delta: float) -> void:
 		_flight_yaw = rotation.y
 		_flight_pitch = 0.0
 		_flight_initialized = true
+
+	if _liftoff_active:
+		_process_liftoff(delta)
+		return
 
 	var yaw_rate: float = deg_to_rad(vehicle_data.turn_rate_degrees if vehicle_data else 90.0)
 	var pitch_rate: float = deg_to_rad(vehicle_data.pitch_rate_degrees if vehicle_data else 60.0)

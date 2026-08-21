@@ -77,6 +77,9 @@ func occupy(unit: Unit, player_input: Node) -> void:
 	occupant_unit = unit
 	occupant_player_input = player_input
 	unit.enter_vehicle()
+	if seat_role == SeatRole.DRIVER and vehicle and vehicle.vehicle_data \
+			and vehicle.vehicle_data.movement_type == VehicleData.MovementType.FLIGHT:
+		vehicle.begin_flight_liftoff()
 	occupied.emit(self)
 
 func exit_seat() -> Transform3D:

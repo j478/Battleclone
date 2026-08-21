@@ -12,6 +12,11 @@ signal healed(amount: float)
 @export var regen_per_second: float = 4.0
 @export var regen_delay: float = 6.0 # seconds of no damage before regen starts, matches BF2 pacing
 
+## Additive regen buff (e.g. an Officer's aura). Additive rather than a
+## single overwritten value so multiple sources never fight over it --
+## each just adds and later subtracts its own contribution.
+var regen_bonus: float = 0.0
+
 var current_health: float
 var is_dead: bool = false
 
@@ -30,7 +35,7 @@ func _process(delta: float) -> void:
 		return
 	_time_since_damage += delta
 	if _time_since_damage >= regen_delay and current_health < max_health:
-		heal(regen_per_second * delta)
+		heal((regen_per_second + regen_bonus) * delta)
 
 func apply_damage(amount: float, instigator: Node = null) -> void:
 	if is_dead or amount <= 0.0:

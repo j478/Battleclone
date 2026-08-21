@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/WeaponData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+weapon_name = "Repair Tool"
+fire_mode = 2
+damage = 10.0
+fire_rate = 3.0
+range_meters = 8.0
+spread_degrees = 0.0
+ammo_per_clip = 9999
+reload_time = 0.1
+is_automatic = true
+splash_radius = 0.0
+splash_damage = 0.0
+projectile_speed = 25.0
+tracer_speed = 90.0

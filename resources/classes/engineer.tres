@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="ClassData" load_steps=5 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/ClassData.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/weapons/blaster_rifle.tres" id="2"]
+[ext_resource type="Resource" path="res://resources/weapons/repair_tool.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/weapons/thermal_detonator.tres" id="4"]
+
+[resource]
+script = ExtResource("1")
+class_name_label = "Engineer"
+max_health = 100.0
+move_speed = 5.5
+sprint_speed = 8.0
+crouch_speed = 2.75
+jump_velocity = 6.5
+primary_weapon = ExtResource("2")
+secondary_weapon = ExtResource("3")
+throwable = ExtResource("4")
+body_color = Color(0.85, 0.65, 0.15, 1)

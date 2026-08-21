@@ -9,12 +9,16 @@ class_name Unit
 
 const AIR_CONTROL := 0.35
 
+signal weapon_switched(handler: WeaponHandler)
+
 @export var faction_id: int = 0
 @export var class_data: ClassData
 var display_name: String = "Soldier"
 
 @onready var health: Health = $Health
 @onready var weapon_handler: WeaponHandler = $WeaponHandler
+@onready var secondary_weapon_handler: WeaponHandler = get_node_or_null("SecondaryWeaponHandler")
+@onready var grenade_handler: WeaponHandler = get_node_or_null("GrenadeHandler")
 @onready var collision_shape: CollisionShape3D = $CollisionShape3D
 @onready var aim_pivot: Node3D = $AimPivot
 
@@ -25,8 +29,12 @@ var crouch_held: bool = false
 var jump_pressed: bool = false
 var fire_held: bool = false
 var reload_pressed: bool = false
+var switch_weapon_pressed: bool = false
+var throw_pressed: bool = false
 
 var is_crouching: bool = false
+var active_weapon_slot: int = 0 # 0 = primary, 1 = secondary
+var _active_ability: Node = null
 var _gravity: float = ProjectSettings.get_setting("physics/3d/default_gravity", 18.0)
 var _standing_height: float
 
@@ -42,7 +50,30 @@ func apply_class(data: ClassData) -> void:
 	class_data = data
 	display_name = "%s (%s)" % [data.class_name_label, "A" if faction_id == GameManager.FACTION_A_ID else "B"]
 	health.setup(data.max_health)
+	health.regen_bonus = 0.0 # clear any stale aura bonus from a previous class
 	weapon_handler.equip(data.primary_weapon, self)
+	if secondary_weapon_handler:
+		secondary_weapon_handler.equip(data.secondary_weapon, self)
+	if grenade_handler:
+		grenade_handler.equip(data.throwable, self)
+	active_weapon_slot = 0
+	weapon_switched.emit(weapon_handler)
+
+	var camera_rig := get_node_or_null("CameraRig")
+	if camera_rig:
+		camera_rig.ads_fov = data.aim_fov
+
+	# Respawn can reapply a different class to the same Unit (AI bots
+	# re-roll a random class every life) -- free the old ability first so
+	# a former Officer's aura doesn't keep running after they respawn as
+	# something else.
+	if _active_ability and is_instance_valid(_active_ability):
+		_active_ability.queue_free()
+		_active_ability = null
+	if data.class_ability:
+		_active_ability = data.class_ability.instantiate()
+		add_child(_active_ability)
+
 	var mesh := get_node_or_null("MeshInstance3D")
 	if mesh and mesh.get_surface_override_material_count() > 0:
 		var mat := StandardMaterial3D.new()
@@ -51,6 +82,14 @@ func apply_class(data: ClassData) -> void:
 
 func get_health() -> Health:
 	return health
+
+## Which of the two switchable slots is actually live right now -- falls
+## back to primary if the secondary isn't equipped (or doesn't exist),
+## so switching to an empty slot is never possible in the first place.
+func _active_weapon_handler() -> WeaponHandler:
+	if active_weapon_slot == 1 and secondary_weapon_handler and secondary_weapon_handler.weapon_data:
+		return secondary_weapon_handler
+	return weapon_handler
 
 func _physics_process(delta: float) -> void:
 	if health.is_dead:
@@ -89,11 +128,23 @@ func _physics_process(delta: float) -> void:
 	jump_pressed = false
 	move_and_slide()
 
+	if switch_weapon_pressed:
+		switch_weapon_pressed = false
+		if secondary_weapon_handler and secondary_weapon_handler.weapon_data:
+			active_weapon_slot = 1 - active_weapon_slot
+			weapon_switched.emit(_active_weapon_handler())
+
+	var active_handler: WeaponHandler = _active_weapon_handler()
+	var aim_transform: Transform3D = aim_pivot.global_transform if aim_pivot else global_transform
 	if fire_held:
-		weapon_handler.try_fire(aim_pivot.global_transform if aim_pivot else global_transform)
+		active_handler.try_fire(aim_transform)
 	if reload_pressed:
-		weapon_handler.start_reload()
+		active_handler.start_reload()
 		reload_pressed = false
+	if throw_pressed:
+		throw_pressed = false
+		if grenade_handler and grenade_handler.weapon_data:
+			grenade_handler.try_fire(aim_transform)
 
 func _update_crouch_shape() -> void:
 	if not collision_shape or not (collision_shape.shape is CapsuleShape3D):

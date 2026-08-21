@@ -9,8 +9,11 @@ const MOUSE_SENSITIVITY := 0.0025
 const PITCH_MIN := deg_to_rad(-80.0)
 const PITCH_MAX := deg_to_rad(80.0)
 const DEFAULT_FOV := 75.0
-const ADS_FOV := 55.0
 const FOV_LERP_SPEED := 10.0
+
+## Aim-down-sights target FOV, settable per class (see ClassData.aim_fov)
+## -- e.g. a sniper scope wants a much tighter zoom than the default.
+var ads_fov: float = 55.0
 
 @onready var pivot: Node3D = $Pivot
 @onready var spring_arm: SpringArm3D = $Pivot/SpringArm3D
@@ -50,7 +53,7 @@ func set_aiming(value: bool) -> void:
 func _process(delta: float) -> void:
 	var cam := get_active_camera()
 	if cam:
-		var target_fov := ADS_FOV if aiming else DEFAULT_FOV
+		var target_fov := ads_fov if aiming else DEFAULT_FOV
 		cam.fov = lerp(cam.fov, target_fov, FOV_LERP_SPEED * delta)
 
 func _set_active_camera() -> void:

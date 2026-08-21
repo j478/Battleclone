@@ -28,13 +28,16 @@ func _ready() -> void:
 	if muzzle_path != NodePath():
 		_muzzle = get_node(muzzle_path)
 
+## data may be null -- an unequip, used for secondary/grenade slots on
+## classes that don't have one. can_fire() already guards on
+## weapon_data != null, so an unequipped handler safely no-ops.
 func equip(data: WeaponData, owning_shooter: Node) -> void:
 	weapon_data = data
 	shooter = owning_shooter
-	current_ammo = data.ammo_per_clip
+	current_ammo = data.ammo_per_clip if data else 0
 	_reloading = false
 	_cooldown = 0.0
-	ammo_changed.emit(current_ammo, weapon_data.ammo_per_clip)
+	ammo_changed.emit(current_ammo, data.ammo_per_clip if data else 0)
 
 func _process(delta: float) -> void:
 	if _cooldown > 0.0:
@@ -63,6 +66,8 @@ func try_fire(aim_transform: Transform3D) -> bool:
 
 	if weapon_data.fire_mode == WeaponData.FireMode.HITSCAN:
 		_fire_hitscan(origin, spread_dir)
+	elif weapon_data.fire_mode == WeaponData.FireMode.HEAL:
+		_fire_heal(origin, spread_dir)
 	else:
 		_fire_projectile(origin, spread_dir)
 
@@ -107,6 +112,32 @@ func _fire_hitscan(origin: Vector3, direction: Vector3) -> void:
 			var health: Health = collider.get_health()
 			if health:
 				health.apply_damage(weapon_data.damage, shooter)
+
+	_spawn_bolt(origin, hit_point)
+
+## Same raycast as _fire_hitscan (same mask, same shooter-exclusion), but
+## heals instead of damaging -- weapon_data.damage is reused as the
+## heal-per-shot amount rather than adding a new field. No faction check:
+## damage already has none today (friendly fire is allowed), so healing
+## an enemy is a harmless non-issue, not worth gating. Vehicles share the
+## unit collision layer and already expose get_health(), so this repairs
+## them too for free.
+func _fire_heal(origin: Vector3, direction: Vector3) -> void:
+	var space_state: PhysicsDirectSpaceState3D = shooter.get_world_3d().direct_space_state
+	var end: Vector3 = origin + direction * weapon_data.range_meters
+	var query := PhysicsRayQueryParameters3D.create(origin, end)
+	query.exclude = [shooter.get_rid()] if shooter.has_method("get_rid") else []
+	query.collision_mask = (1 << 0) | (1 << 1) # world + units
+	var result: Dictionary = space_state.intersect_ray(query)
+
+	var hit_point := end
+	if result:
+		hit_point = result.position
+		var collider = result.collider
+		if collider and collider.has_method("get_health") and collider != shooter:
+			var health: Health = collider.get_health()
+			if health:
+				health.heal(weapon_data.damage)
 
 	_spawn_bolt(origin, hit_point)
 

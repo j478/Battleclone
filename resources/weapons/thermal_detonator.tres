@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/WeaponData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+weapon_name = "Thermal Detonator"
+fire_mode = 1
+damage = 40.0
+fire_rate = 1.0
+range_meters = 40.0
+spread_degrees = 1.0
+ammo_per_clip = 2
+reload_time = 9999.0
+is_automatic = false
+splash_radius = 4.5
+splash_damage = 70.0
+projectile_speed = 18.0
+tracer_speed = 90.0

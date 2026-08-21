@@ -7,6 +7,7 @@ class_name HUD
 @onready var shield_bar: ProgressBar = $Margin/VBox/ShieldRow/ShieldBar
 @onready var shield_label: Label = $Margin/VBox/ShieldRow/ShieldLabel
 @onready var ammo_label: Label = $Margin/VBox/AmmoLabel
+@onready var grenade_label: Label = $Margin/VBox/GrenadeLabel
 @onready var ticket_a_label: Label = $Margin/VBox/TicketsRow/TicketALabel
 @onready var ticket_b_label: Label = $Margin/VBox/TicketsRow/TicketBLabel
 @onready var kill_feed: VBoxContainer = $KillFeedMargin/KillFeed
@@ -19,6 +20,8 @@ const MAX_KILL_FEED_ENTRIES := 6
 
 var _bound_health: Health
 var _bound_weapon_handler: WeaponHandler
+var _bound_grenade_handler: WeaponHandler
+var _bound_unit: Unit
 var _bound_target: Node # whichever Unit/Vehicle is currently bound
 var _bound_vehicle: Vehicle
 var _bound_seat_role: int = -1 # VehicleSeat.SeatRole, or -1 when not driving
@@ -40,6 +43,8 @@ func _ready() -> void:
 func bind_to_unit(unit: Unit) -> void:
 	_bind_health(unit.health)
 	_bind_ammo(unit.weapon_handler)
+	_bind_grenade_ammo(unit.grenade_handler)
+	_bind_weapon_switch_signal(unit)
 	_bound_target = unit
 	_bound_vehicle = null
 	_bound_seat_role = -1
@@ -50,6 +55,8 @@ func bind_to_vehicle(vehicle: Vehicle, seat: VehicleSeat) -> void:
 	var is_gunner: bool = seat.seat_role == VehicleSeat.SeatRole.GUNNER
 	var wh: WeaponHandler = vehicle.turret_weapon_handler if is_gunner and vehicle.turret_weapon_handler else vehicle.weapon_handler
 	_bind_ammo(wh)
+	_bind_grenade_ammo(null) # vehicles don't have grenades
+	_bind_weapon_switch_signal(null)
 	_bound_target = vehicle
 	_bound_vehicle = vehicle
 	_bound_seat_role = seat.seat_role
@@ -125,6 +132,32 @@ func _bind_ammo(weapon_handler: WeaponHandler) -> void:
 	if weapon_handler.weapon_data:
 		_on_ammo_changed(weapon_handler.current_ammo, weapon_handler.weapon_data.ammo_per_clip)
 
+## Separate from the main ammo binding above -- the grenade slot is
+## always-available (never the "active" weapon), so it gets its own
+## small display rather than sharing/overwriting the main ammo label.
+func _bind_grenade_ammo(handler: WeaponHandler) -> void:
+	if _bound_grenade_handler and is_instance_valid(_bound_grenade_handler):
+		_bound_grenade_handler.ammo_changed.disconnect(_on_grenade_ammo_changed)
+	_bound_grenade_handler = handler
+	if handler:
+		handler.ammo_changed.connect(_on_grenade_ammo_changed)
+	grenade_label.visible = handler != null and handler.weapon_data != null
+	if handler and handler.weapon_data:
+		_on_grenade_ammo_changed(handler.current_ammo, handler.weapon_data.ammo_per_clip)
+
+## Unit.weapon_switched fires whenever Q swaps the active slot, so the
+## ammo readout follows whichever weapon is actually live -- same
+## disconnect/reconnect rebind pattern as _bind_health/_bind_ammo above.
+func _bind_weapon_switch_signal(unit: Unit) -> void:
+	if _bound_unit and is_instance_valid(_bound_unit):
+		_bound_unit.weapon_switched.disconnect(_on_weapon_switched)
+	_bound_unit = unit
+	if unit:
+		unit.weapon_switched.connect(_on_weapon_switched)
+
+func _on_weapon_switched(handler: WeaponHandler) -> void:
+	_bind_ammo(handler)
+
 func _on_health_changed(_amount: float = 0.0, _instigator: Node = null) -> void:
 	_refresh_health()
 
@@ -142,6 +175,16 @@ func _on_shield_changed(current: float, max_shield: float) -> void:
 
 func _on_ammo_changed(current: int, clip_size: int) -> void:
 	ammo_label.text = "%d / %d" % [current, clip_size]
+
+func _on_grenade_ammo_changed(current: int, clip_size: int) -> void:
+	# bind_to_unit runs before apply_class() actually equips anything, so
+	# the initial _bind_grenade_ammo() call can't yet know visibility --
+	# this signal (fired by every equip()/try_fire()/reload) is the
+	# reliable place to decide it instead. clip_size is 0 only when
+	# equip() was called with a null WeaponData (no throwable for this
+	# class), so it doubles as an equipped/unequipped signal.
+	grenade_label.visible = clip_size > 0
+	grenade_label.text = "Grenades: %d / %d" % [current, clip_size]
 
 func _on_tickets_changed(faction_id: int, tickets: int) -> void:
 	if faction_id == GameManager.FACTION_A_ID:

@@ -1,0 +1,19 @@
+[gd_resource type="Resource" script_class="WeaponData" load_steps=2 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/WeaponData.gd" id="1"]
+
+[resource]
+script = ExtResource("1")
+weapon_name = "Sniper Rifle"
+fire_mode = 0
+damage = 90.0
+fire_rate = 1.2
+range_meters = 150.0
+spread_degrees = 0.2
+ammo_per_clip = 6
+reload_time = 2.2
+is_automatic = false
+splash_radius = 0.0
+splash_damage = 0.0
+projectile_speed = 25.0
+tracer_speed = 260.0

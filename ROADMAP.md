@@ -1,6 +1,6 @@
 # Roadmap
 
-Current state: a playable vertical slice — Trooper/Heavy classes, AI bots, one grey-box conquest map, full capture/ticket/win-condition logic. Everything below is designed to slot into the existing architecture without rewriting it. Rough order reflects dependency, not necessarily priority — reorder freely.
+Current state: a playable vertical slice — five soldier classes (Trooper/Heavy/Sniper/Engineer/Officer), AI bots, one grey-box conquest map, full capture/ticket/win-condition logic, plus player-flyable/AI-dogfighting starfighters. Everything below is designed to slot into the existing architecture without rewriting it. Rough order reflects dependency, not necessarily priority — reorder freely.
 
 ## Architecture recap (read this before extending)
 
@@ -9,11 +9,18 @@ Current state: a playable vertical slice — Trooper/Heavy classes, AI bots, one
 - **Combat**: hitscan blasters do instant raycast damage plus a purely visual tracer (`Bolt.gd`); explosives are real physics projectiles (`Projectile.gd`) with splash damage. Both look up damage targets via `collider.get_health()` — anything that should be shootable needs a `get_health() -> Health` method (Unit.gd already has one; vehicles will need the same).
 - **Match state**: `MatchState` (autoload) owns tickets and the command-post registry across the *whole match*, not per-map. `CommandPost.gd` registers itself into `MatchState.command_posts` on `_ready()`. This is deliberate: when a space layer exists, its command posts register into the exact same list, so ground and space share one win condition automatically.
 
-## Phase 1 — Round out the soldier classes
+## Phase 1 — Round out the soldier classes (done)
 
-- Add Sniper (`WeaponData` with high damage/low fire-rate/long range, maybe a scope-zoom FOV on `aim`), Engineer (repair/mines/ammo-resupply — needs a new small "gadget" concept, e.g. an `@export var gadget: PackedScene` on `ClassData`), Officer (buff aura — a `Node` component that boosts nearby allies' `regen_per_second` via `Health`).
-- Wire up weapon *switching* (primary/secondary), not just one equipped weapon — `switch_weapon` input action already exists but isn't consumed yet. `WeaponHandler` would need a second slot and an `equip_slot(index)` call from `PlayerInput`/`AIBrain`.
-- Thermal detonator as a throwable using the existing `Projectile.gd` (it already supports arcing + splash).
+Sniper (high damage/low fire-rate/long range `WeaponData`, plus a real scope-zoom via a per-class `ClassData.aim_fov` — `CameraRig`'s aim FOV, previously a hardcoded constant, is now settable), Engineer (a repair tool as its *secondary* weapon rather than a bespoke gadget system — a new `WeaponData.FireMode.HEAL` reuses the exact same raycast `_fire_hitscan` already used, just calling `Health.heal()` instead of `apply_damage()`; repairs vehicles too for free, since they share the unit collision layer and already expose `get_health()`), Officer (a buff aura — `ClassData.class_ability: PackedScene`, a generic new extension point instantiated in `apply_class()`, currently only used for `OfficerAura.gd`). Weapon switching (primary/secondary, the previously-dead `switch_weapon` input action) and a thermal detonator throwable (a third always-available weapon slot, reusing `Projectile.gd`'s existing arc + splash unmodified) shipped alongside these, per the original plan.
+
+Key architectural choice: `Unit` gained two extra sibling `WeaponHandler` nodes (`SecondaryWeaponHandler`, `GrenadeHandler`) rather than making `WeaponHandler` itself slot-aware — mirrors the precedent `Vehicle.tscn` already set with its driver gun + turret gun as two independent `WeaponHandler` instances on one body. `Unit.gd` just decides which sibling is "active"; `WeaponHandler.gd` itself only needed one small change (`equip(null, ...)` is now a valid "unequip," needed for classes without a secondary/throwable).
+
+AI does not use weapon switching, the repair tool, or grenades this pass (player-only, same phased approach as starfighter flight) — Officer's aura and Sniper's stat differences work for AI bots automatically since neither needs a *decision*, just data.
+
+Lessons worth remembering if this code gets touched again:
+- `ConquestMode.gd` calls `Unit.apply_class()` on *every* respawn, not just first spawn (AI bots re-roll a random class each life) — any new per-class runtime setup has to live in `apply_class()` so it resets correctly on a class change mid-match, not just at first spawn. This is why `OfficerAura` gets explicitly `queue_free()`'d and re-instantiated there rather than created once in `_ready()`.
+- A raycast fired in the *same frame* a target's `CollisionShape3D` was added to the tree can miss it — Godot's physics server registers new colliders into its broadphase at the next physics step, not synchronously on `add_child()`. Bit a standalone verification harness building test units and firing at them all within one `_ready()` call; fixed by deferring the fire to a later `_process()` tick.
+- `HUD.bind_to_unit()` runs *before* `Unit.apply_class()` actually equips anything (`ConquestMode._on_player_class_chosen`'s ordering) — a HUD element whose visibility depends on "is a weapon actually equipped" can't decide that at bind time; it has to be decided from the `ammo_changed` signal instead (which only ever fires for an actually-equipped handler), same class of bug as the pre-existing crosshair-after-death fix.
 
 ## Phase 2 — Vehicles (done: speeder bike + walker, player- and AI-usable)
 

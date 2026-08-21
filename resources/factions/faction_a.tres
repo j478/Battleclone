@@ -1,12 +1,15 @@
-[gd_resource type="Resource" script_class="FactionData" load_steps=4 format=3]
+[gd_resource type="Resource" script_class="FactionData" load_steps=7 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/FactionData.gd" id="1"]
 [ext_resource type="Resource" path="res://resources/classes/trooper.tres" id="2"]
 [ext_resource type="Resource" path="res://resources/classes/heavy.tres" id="3"]
+[ext_resource type="Resource" path="res://resources/classes/sniper.tres" id="4"]
+[ext_resource type="Resource" path="res://resources/classes/engineer.tres" id="5"]
+[ext_resource type="Resource" path="res://resources/classes/officer.tres" id="6"]
 
 [resource]
 script = ExtResource("1")
 faction_name = "Faction A"
 faction_id = 0
 color = Color(0.25, 0.55, 1, 1)
-available_classes = [ExtResource("2"), ExtResource("3")]
+available_classes = [ExtResource("2"), ExtResource("3"), ExtResource("4"), ExtResource("5"), ExtResource("6")]

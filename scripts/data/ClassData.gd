@@ -9,7 +9,17 @@ class_name ClassData
 @export var jump_velocity: float = 6.5
 @export var primary_weapon: WeaponData
 @export var secondary_weapon: WeaponData
+@export var throwable: WeaponData # thrown via its own key, independent of weapon switching
 @export var body_color: Color = Color(0.6, 0.6, 0.65)
+
+## Aim-down-sights camera FOV in degrees (see PlayerSoldier's CameraRig).
+## Lower = tighter zoom, e.g. a sniper scope.
+@export var aim_fov: float = 55.0
+
+## Optional per-class runtime behavior (e.g. Officer's buff aura),
+## instantiated as a child of Unit in apply_class(). Most classes leave
+## this unset.
+@export var class_ability: PackedScene
 
 ## Per-decision-tick chance an AI bot on this class will go claim an
 ## unclaimed starfighter (see AIBrain._maybe_seek_starfighter). Dial-able

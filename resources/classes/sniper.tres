@@ -1,17 +1,18 @@
 [gd_resource type="Resource" script_class="ClassData" load_steps=4 format=3]
 
 [ext_resource type="Script" path="res://scripts/data/ClassData.gd" id="1"]
-[ext_resource type="Resource" path="res://resources/weapons/rocket_launcher.tres" id="2"]
+[ext_resource type="Resource" path="res://resources/weapons/sniper_rifle.tres" id="2"]
 [ext_resource type="Resource" path="res://resources/weapons/thermal_detonator.tres" id="3"]
 
 [resource]
 script = ExtResource("1")
-class_name_label = "Heavy"
-max_health = 130.0
-move_speed = 4.6
-sprint_speed = 6.5
-crouch_speed = 2.4
-jump_velocity = 6.0
+class_name_label = "Sniper"
+max_health = 80.0
+move_speed = 5.0
+sprint_speed = 7.5
+crouch_speed = 2.5
+jump_velocity = 6.5
 primary_weapon = ExtResource("2")
 throwable = ExtResource("3")
-body_color = Color(0.15, 0.35, 0.65, 1)
+aim_fov = 20.0
+body_color = Color(0.3, 0.55, 0.35, 1)

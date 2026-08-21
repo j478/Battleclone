@@ -1,7 +1,7 @@
 extends Resource
 class_name WeaponData
 
-enum FireMode { HITSCAN, PROJECTILE }
+enum FireMode { HITSCAN, PROJECTILE, HEAL }
 
 @export var weapon_name: String = "Blaster"
 @export var fire_mode: FireMode = FireMode.HITSCAN

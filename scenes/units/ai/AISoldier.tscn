@@ -39,6 +39,14 @@ script = ExtResource("2")
 script = ExtResource("3")
 muzzle_path = NodePath("../AimPivot/Muzzle")
 
+[node name="SecondaryWeaponHandler" type="Node" parent="."]
+script = ExtResource("3")
+muzzle_path = NodePath("../AimPivot/Muzzle")
+
+[node name="GrenadeHandler" type="Node" parent="."]
+script = ExtResource("3")
+muzzle_path = NodePath("../AimPivot/Muzzle")
+
 [node name="NavigationAgent3D" type="NavigationAgent3D" parent="."]
 path_desired_distance = 0.75
 target_desired_distance = 1.0

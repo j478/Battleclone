@@ -75,6 +75,10 @@ func _physics_process(delta: float) -> void:
 	unit.crouch_held = Input.is_action_pressed("crouch")
 	unit.fire_held = Input.is_action_pressed("fire")
 	unit.reload_pressed = Input.is_action_just_pressed("reload")
+	if Input.is_action_just_pressed("switch_weapon"):
+		unit.switch_weapon_pressed = true
+	if Input.is_action_just_pressed("throw_grenade"):
+		unit.throw_pressed = true
 	if Input.is_action_just_pressed("jump"):
 		unit.jump_pressed = true
 

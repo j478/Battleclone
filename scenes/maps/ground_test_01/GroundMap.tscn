@@ -1,4 +1,4 @@
-[gd_scene load_steps=17 format=3]
+[gd_scene load_steps=27 format=3]
 
 [ext_resource type="Script" path="res://scripts/gamemode/ConquestMode.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/gamemode/CommandPost.tscn" id="2"]
@@ -22,23 +22,43 @@ ambient_light_color = Color(0.55, 0.6, 0.65, 1)
 ambient_light_energy = 1.0
 
 [sub_resource type="BoxShape3D" id="GroundShape"]
-size = Vector3(140, 1, 140)
+size = Vector3(420, 1, 420)
 
 [sub_resource type="BoxMesh" id="GroundMesh"]
-size = Vector3(140, 1, 140)
+size = Vector3(420, 1, 420)
 
 [sub_resource type="StandardMaterial3D" id="GroundMat"]
 albedo_color = Color(0.32, 0.38, 0.3, 1)
 roughness = 0.95
 
-[sub_resource type="BoxShape3D" id="CrateShape"]
-size = Vector3(2, 2, 2)
+[sub_resource type="BoxShape3D" id="BuildingSmallShape"]
+size = Vector3(8, 8, 8)
 
-[sub_resource type="BoxMesh" id="CrateMesh"]
-size = Vector3(2, 2, 2)
+[sub_resource type="BoxMesh" id="BuildingSmallMesh"]
+size = Vector3(8, 8, 8)
 
-[sub_resource type="StandardMaterial3D" id="CrateMat"]
-albedo_color = Color(0.5, 0.42, 0.3, 1)
+[sub_resource type="StandardMaterial3D" id="BuildingSmallMat"]
+albedo_color = Color(0.55, 0.52, 0.48, 1)
+roughness = 0.9
+
+[sub_resource type="BoxShape3D" id="BuildingMediumShape"]
+size = Vector3(10, 12, 10)
+
+[sub_resource type="BoxMesh" id="BuildingMediumMesh"]
+size = Vector3(10, 12, 10)
+
+[sub_resource type="StandardMaterial3D" id="BuildingMediumMat"]
+albedo_color = Color(0.45, 0.48, 0.52, 1)
+roughness = 0.9
+
+[sub_resource type="BoxShape3D" id="BuildingTallShape"]
+size = Vector3(9, 14, 9)
+
+[sub_resource type="BoxMesh" id="BuildingTallMesh"]
+size = Vector3(9, 14, 9)
+
+[sub_resource type="StandardMaterial3D" id="BuildingTallMat"]
+albedo_color = Color(0.38, 0.4, 0.44, 1)
 roughness = 0.9
 
 [sub_resource type="NavigationMesh" id="NavMesh_1"]
@@ -79,100 +99,338 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
 mesh = SubResource("GroundMesh")
 surface_material_override/0 = SubResource("GroundMat")
 
-[node name="Crate1" type="StaticBody3D" parent="NavigationRegion3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 1, 6)
+[node name="Buildings" type="Node3D" parent="NavigationRegion3D"]
+
+[node name="Building_CP1_Small1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -112, 4, 38)
 collision_layer = 1
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate1"]
-shape = SubResource("CrateShape")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP1_Small1"]
+shape = SubResource("BuildingSmallShape")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate1"]
-mesh = SubResource("CrateMesh")
-surface_material_override/0 = SubResource("CrateMat")
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP1_Small1"]
+mesh = SubResource("BuildingSmallMesh")
+surface_material_override/0 = SubResource("BuildingSmallMat")
 
-[node name="Crate2" type="StaticBody3D" parent="NavigationRegion3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -18, 1, -6)
+[node name="Building_CP1_Medium1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -90, 6, 40)
 collision_layer = 1
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate2"]
-shape = SubResource("CrateShape")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP1_Medium1"]
+shape = SubResource("BuildingMediumShape")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate2"]
-mesh = SubResource("CrateMesh")
-surface_material_override/0 = SubResource("CrateMat")
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP1_Medium1"]
+mesh = SubResource("BuildingMediumMesh")
+surface_material_override/0 = SubResource("BuildingMediumMat")
 
-[node name="Crate3" type="StaticBody3D" parent="NavigationRegion3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, 8)
+[node name="Building_CP1_Medium2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -106, 6, -15)
 collision_layer = 1
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate3"]
-shape = SubResource("CrateShape")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP1_Medium2"]
+shape = SubResource("BuildingMediumShape")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate3"]
-mesh = SubResource("CrateMesh")
-surface_material_override/0 = SubResource("CrateMat")
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP1_Medium2"]
+mesh = SubResource("BuildingMediumMesh")
+surface_material_override/0 = SubResource("BuildingMediumMat")
 
-[node name="Crate4" type="StaticBody3D" parent="NavigationRegion3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1, -8)
+[node name="Building_CP1_Small2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -86, 4, -13)
 collision_layer = 1
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate4"]
-shape = SubResource("CrateShape")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP1_Small2"]
+shape = SubResource("BuildingSmallShape")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate4"]
-mesh = SubResource("CrateMesh")
-surface_material_override/0 = SubResource("CrateMat")
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP1_Small2"]
+mesh = SubResource("BuildingSmallMesh")
+surface_material_override/0 = SubResource("BuildingSmallMat")
 
-[node name="Crate5" type="StaticBody3D" parent="NavigationRegion3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 1, 6)
+[node name="Building_CP1_Tall1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -98, 7, 58)
 collision_layer = 1
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate5"]
-shape = SubResource("CrateShape")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP1_Tall1"]
+shape = SubResource("BuildingTallShape")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate5"]
-mesh = SubResource("CrateMesh")
-surface_material_override/0 = SubResource("CrateMat")
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP1_Tall1"]
+mesh = SubResource("BuildingTallMesh")
+surface_material_override/0 = SubResource("BuildingTallMat")
 
-[node name="Crate6" type="StaticBody3D" parent="NavigationRegion3D"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 18, 1, -6)
+[node name="Building_CP2_Medium1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -62, 6, 13)
 collision_layer = 1
 collision_mask = 0
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Crate6"]
-shape = SubResource("CrateShape")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP2_Medium1"]
+shape = SubResource("BuildingMediumShape")
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Crate6"]
-mesh = SubResource("CrateMesh")
-surface_material_override/0 = SubResource("CrateMat")
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP2_Medium1"]
+mesh = SubResource("BuildingMediumMesh")
+surface_material_override/0 = SubResource("BuildingMediumMat")
+
+[node name="Building_CP2_Small1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 4, 15)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP2_Small1"]
+shape = SubResource("BuildingSmallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP2_Small1"]
+mesh = SubResource("BuildingSmallMesh")
+surface_material_override/0 = SubResource("BuildingSmallMat")
+
+[node name="Building_CP2_Small2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 4, -38)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP2_Small2"]
+shape = SubResource("BuildingSmallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP2_Small2"]
+mesh = SubResource("BuildingSmallMesh")
+surface_material_override/0 = SubResource("BuildingSmallMat")
+
+[node name="Building_CP2_Tall1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -36, 7, -37)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP2_Tall1"]
+shape = SubResource("BuildingTallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP2_Tall1"]
+mesh = SubResource("BuildingTallMesh")
+surface_material_override/0 = SubResource("BuildingTallMat")
+
+[node name="Building_CP2_Medium2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, 6, 33)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP2_Medium2"]
+shape = SubResource("BuildingMediumShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP2_Medium2"]
+mesh = SubResource("BuildingMediumMesh")
+surface_material_override/0 = SubResource("BuildingMediumMat")
+
+[node name="Building_CP3_Tall1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 7, 26)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP3_Tall1"]
+shape = SubResource("BuildingTallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP3_Tall1"]
+mesh = SubResource("BuildingTallMesh")
+surface_material_override/0 = SubResource("BuildingTallMat")
+
+[node name="Building_CP3_Small1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 4, 28)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP3_Small1"]
+shape = SubResource("BuildingSmallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP3_Small1"]
+mesh = SubResource("BuildingSmallMesh")
+surface_material_override/0 = SubResource("BuildingSmallMat")
+
+[node name="Building_CP3_Small2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 4, -27)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP3_Small2"]
+shape = SubResource("BuildingSmallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP3_Small2"]
+mesh = SubResource("BuildingSmallMesh")
+surface_material_override/0 = SubResource("BuildingSmallMat")
+
+[node name="Building_CP3_Medium1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 6, -25)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP3_Medium1"]
+shape = SubResource("BuildingMediumShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP3_Medium1"]
+mesh = SubResource("BuildingMediumMesh")
+surface_material_override/0 = SubResource("BuildingMediumMat")
+
+[node name="Building_CP3_Medium2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 6, 46)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP3_Medium2"]
+shape = SubResource("BuildingMediumShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP3_Medium2"]
+mesh = SubResource("BuildingMediumMesh")
+surface_material_override/0 = SubResource("BuildingMediumMat")
+
+[node name="Building_CP4_Small1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 4, 37)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP4_Small1"]
+shape = SubResource("BuildingSmallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP4_Small1"]
+mesh = SubResource("BuildingSmallMesh")
+surface_material_override/0 = SubResource("BuildingSmallMat")
+
+[node name="Building_CP4_Tall1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 7, 39)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP4_Tall1"]
+shape = SubResource("BuildingTallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP4_Tall1"]
+mesh = SubResource("BuildingTallMesh")
+surface_material_override/0 = SubResource("BuildingTallMat")
+
+[node name="Building_CP4_Medium1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 6, -14)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP4_Medium1"]
+shape = SubResource("BuildingMediumShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP4_Medium1"]
+mesh = SubResource("BuildingMediumMesh")
+surface_material_override/0 = SubResource("BuildingMediumMat")
+
+[node name="Building_CP4_Small2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 64, 4, -13)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP4_Small2"]
+shape = SubResource("BuildingSmallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP4_Small2"]
+mesh = SubResource("BuildingSmallMesh")
+surface_material_override/0 = SubResource("BuildingSmallMat")
+
+[node name="Building_CP4_Small3" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 52, 4, 57)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP4_Small3"]
+shape = SubResource("BuildingSmallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP4_Small3"]
+mesh = SubResource("BuildingSmallMesh")
+surface_material_override/0 = SubResource("BuildingSmallMat")
+
+[node name="Building_CP5_Medium1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 88, 6, 14)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP5_Medium1"]
+shape = SubResource("BuildingMediumShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP5_Medium1"]
+mesh = SubResource("BuildingMediumMesh")
+surface_material_override/0 = SubResource("BuildingMediumMat")
+
+[node name="Building_CP5_Small1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 110, 4, 16)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP5_Small1"]
+shape = SubResource("BuildingSmallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP5_Small1"]
+mesh = SubResource("BuildingSmallMesh")
+surface_material_override/0 = SubResource("BuildingSmallMat")
+
+[node name="Building_CP5_Tall1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 94, 7, -39)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP5_Tall1"]
+shape = SubResource("BuildingTallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP5_Tall1"]
+mesh = SubResource("BuildingTallMesh")
+surface_material_override/0 = SubResource("BuildingTallMat")
+
+[node name="Building_CP5_Medium2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 114, 6, -37)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP5_Medium2"]
+shape = SubResource("BuildingMediumShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP5_Medium2"]
+mesh = SubResource("BuildingMediumMesh")
+surface_material_override/0 = SubResource("BuildingMediumMat")
+
+[node name="Building_CP5_Small2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 102, 4, 34)
+collision_layer = 1
+collision_mask = 0
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="NavigationRegion3D/Buildings/Building_CP5_Small2"]
+shape = SubResource("BuildingSmallShape")
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="NavigationRegion3D/Buildings/Building_CP5_Small2"]
+mesh = SubResource("BuildingSmallMesh")
+surface_material_override/0 = SubResource("BuildingSmallMat")
 
 [node name="CommandPosts" type="Node3D" parent="."]
 
 [node name="HomeA" parent="CommandPosts" instance=ExtResource("2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -150, 0, 0)
 post_name = "Faction A Base"
 capturable = false
 starting_owner_faction_id = 0
 
 [node name="CP1" parent="CommandPosts" instance=ExtResource("2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -25, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 0, 12)
 post_name = "Outpost North"
 
 [node name="CP2" parent="CommandPosts" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 0, -12)
+post_name = "Warehouse District"
+
+[node name="CP3" parent="CommandPosts" instance=ExtResource("2")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
 post_name = "Central Depot"
 
-[node name="CP3" parent="CommandPosts" instance=ExtResource("2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 25, 0, 0)
+[node name="CP4" parent="CommandPosts" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0, 12)
+post_name = "Market Row"
+
+[node name="CP5" parent="CommandPosts" instance=ExtResource("2")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0, -12)
 post_name = "Outpost South"
 
 [node name="HomeB" parent="CommandPosts" instance=ExtResource("2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 150, 0, 0)
 post_name = "Faction B Base"
 capturable = false
 starting_owner_faction_id = 1
@@ -180,40 +438,40 @@ starting_owner_faction_id = 1
 [node name="VehiclePads" type="Node3D" parent="."]
 
 [node name="SpeederPadA" parent="VehiclePads" instance=ExtResource("7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -45, 0, 8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -135, 0, 24)
 vehicle_scene = ExtResource("8")
 vehicle_data = ExtResource("9")
 faction_id = 0
 
 [node name="SpeederPadB" parent="VehiclePads" instance=ExtResource("7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 0, -8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 135, 0, -24)
 vehicle_scene = ExtResource("8")
 vehicle_data = ExtResource("9")
 faction_id = 1
 
 [node name="WalkerPadA" parent="VehiclePads" instance=ExtResource("7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -45, 0, -8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -135, 0, -24)
 vehicle_scene = ExtResource("10")
 vehicle_data = ExtResource("11")
 faction_id = 0
 respawn_delay = 35.0
 
 [node name="WalkerPadB" parent="VehiclePads" instance=ExtResource("7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 0, 8)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 135, 0, 24)
 vehicle_scene = ExtResource("10")
 vehicle_data = ExtResource("11")
 faction_id = 1
 respawn_delay = 35.0
 
 [node name="StarfighterPadA" parent="VehiclePads" instance=ExtResource("7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -45, 0, 16)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -135, 0, 48)
 vehicle_scene = ExtResource("12")
 vehicle_data = ExtResource("13")
 faction_id = 0
 respawn_delay = 40.0
 
 [node name="StarfighterPadB" parent="VehiclePads" instance=ExtResource("7")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 0, -16)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 135, 0, -48)
 vehicle_scene = ExtResource("12")
 vehicle_data = ExtResource("13")
 faction_id = 1

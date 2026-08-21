@@ -11,7 +11,7 @@ class_name Vehicle
 const AIR_GRAVITY := 18.0
 const HOVER_CORRECTION_RATE := 8.0
 const FLIGHT_PITCH_LIMIT := 1.3962634 # 80 degrees
-const FLIGHT_BOUNDARY_RADIUS := 100.0 # soft push-back starts past this XZ distance from center
+const FLIGHT_BOUNDARY_RADIUS := 300.0 # soft push-back starts past this XZ distance from center
 const FLIGHT_BOUNDARY_PUSH := 20.0
 const BANK_LERP_SPEED := 6.0
 const LIFTOFF_HEIGHT := 4.0 # meters climbed automatically on boarding, BFII-style

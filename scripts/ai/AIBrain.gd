@@ -25,7 +25,7 @@ const ARRIVE_DISTANCE := 1.0
 const SPLASH_SAFETY_MARGIN := 1.3 # don't fire a splash weapon if the blast would reach us
 
 const VEHICLE_SEEK_MIN_OBJECTIVE_DIST := 20.0 # skip the vehicle scan entirely for close objectives
-const VEHICLE_SEEK_MAX_DETOUR := 18.0 # hard cap, no long detours to reach a vehicle
+const VEHICLE_SEEK_MAX_DETOUR := 54.0 # hard cap, no long detours to reach a vehicle
 const VEHICLE_SEEK_TIME_MARGIN := 0.85 # driving must be meaningfully faster, not marginally
 const VEHICLE_SEAT_ARRIVE_DISTANCE := 3.0
 const VEHICLE_SEEK_TIMEOUT := 10.0 # give up and go on foot if a seat can't be reached
@@ -36,10 +36,10 @@ const VEHICLE_STEER_FULL_LOCK_DEG := 45.0
 const VEHICLE_THROTTLE_EASE_DEG := 90.0
 const VEHICLE_THROTTLE_MIN := 0.2 # keeps the vehicle pivoting toward target instead of stalling
 const VEHICLE_FIRE_HEADING_TOLERANCE_DEG := 15.0 # forward-fixed weapons shouldn't fire while badly misaligned
-const MAP_BOUNDARY_LIMIT := 60.0 # ground extends to ~70; steer back well before actually reaching the edge
+const MAP_BOUNDARY_LIMIT := 180.0 # ground extends to ~210; steer back well before actually reaching the edge
 const VEHICLE_OBSTACLE_LOOKAHEAD := 6.0
 
-const STARFIGHTER_SEEK_MAX_DIST := 40.0 # don't detour far on foot just to try for a fighter
+const STARFIGHTER_SEEK_MAX_DIST := 120.0 # don't detour far on foot just to try for a fighter
 const FLIGHT_ENGAGE_RANGE := 120.0 # less than the cannon's range_meters -- commit before actually in range
 const FLIGHT_FIRE_TOLERANCE_DEG := 10.0
 const FLIGHT_STEER_FULL_LOCK_DEG := 35.0
@@ -49,7 +49,7 @@ const FLIGHT_MIN_ALTITUDE := 12.0 # Vehicle.gd has no floor of its own -- AI has
 const FLIGHT_MIN_ALTITUDE_CLIMB_TARGET := 30.0 # absolute altitude to climb toward once under the floor
 const FLIGHT_PATROL_MIN_ALT := 20.0
 const FLIGHT_PATROL_MAX_ALT := 55.0 # comfortably under Vehicle's flight_ceiling default of 70
-const FLIGHT_PATROL_RADIUS := 80.0 # comfortably inside Vehicle's FLIGHT_BOUNDARY_RADIUS of 100
+const FLIGHT_PATROL_RADIUS := 240.0 # comfortably inside Vehicle's FLIGHT_BOUNDARY_RADIUS of 300
 const FLIGHT_PATROL_ARRIVE_DIST := 8.0
 
 @onready var unit: Unit = get_parent() as Unit

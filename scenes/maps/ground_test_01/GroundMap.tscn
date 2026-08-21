@@ -102,7 +102,7 @@ surface_material_override/0 = SubResource("GroundMat")
 [node name="Buildings" type="Node3D" parent="NavigationRegion3D"]
 
 [node name="Building_CP1_Small1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -112, 4, 38)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -112, 4, 61)
 collision_layer = 1
 collision_mask = 0
 
@@ -114,7 +114,7 @@ mesh = SubResource("BuildingSmallMesh")
 surface_material_override/0 = SubResource("BuildingSmallMat")
 
 [node name="Building_CP1_Medium1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -90, 6, 40)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -90, 6, 63)
 collision_layer = 1
 collision_mask = 0
 
@@ -126,7 +126,7 @@ mesh = SubResource("BuildingMediumMesh")
 surface_material_override/0 = SubResource("BuildingMediumMat")
 
 [node name="Building_CP1_Medium2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -106, 6, -15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -106, 6, 8)
 collision_layer = 1
 collision_mask = 0
 
@@ -138,7 +138,7 @@ mesh = SubResource("BuildingMediumMesh")
 surface_material_override/0 = SubResource("BuildingMediumMat")
 
 [node name="Building_CP1_Small2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -86, 4, -13)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -86, 4, 10)
 collision_layer = 1
 collision_mask = 0
 
@@ -150,7 +150,7 @@ mesh = SubResource("BuildingSmallMesh")
 surface_material_override/0 = SubResource("BuildingSmallMat")
 
 [node name="Building_CP1_Tall1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -98, 7, 58)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -98, 7, 81)
 collision_layer = 1
 collision_mask = 0
 
@@ -162,7 +162,7 @@ mesh = SubResource("BuildingTallMesh")
 surface_material_override/0 = SubResource("BuildingTallMat")
 
 [node name="Building_CP2_Medium1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -62, 6, 13)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -62, 6, -20)
 collision_layer = 1
 collision_mask = 0
 
@@ -174,7 +174,7 @@ mesh = SubResource("BuildingMediumMesh")
 surface_material_override/0 = SubResource("BuildingMediumMat")
 
 [node name="Building_CP2_Small1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 4, 15)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -40, 4, -18)
 collision_layer = 1
 collision_mask = 0
 
@@ -186,7 +186,7 @@ mesh = SubResource("BuildingSmallMesh")
 surface_material_override/0 = SubResource("BuildingSmallMat")
 
 [node name="Building_CP2_Small2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 4, -38)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -56, 4, -71)
 collision_layer = 1
 collision_mask = 0
 
@@ -198,7 +198,7 @@ mesh = SubResource("BuildingSmallMesh")
 surface_material_override/0 = SubResource("BuildingSmallMat")
 
 [node name="Building_CP2_Tall1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -36, 7, -37)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -36, 7, -70)
 collision_layer = 1
 collision_mask = 0
 
@@ -210,7 +210,7 @@ mesh = SubResource("BuildingTallMesh")
 surface_material_override/0 = SubResource("BuildingTallMat")
 
 [node name="Building_CP2_Medium2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, 6, 33)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -48, 6, 0)
 collision_layer = 1
 collision_mask = 0
 
@@ -222,7 +222,7 @@ mesh = SubResource("BuildingMediumMesh")
 surface_material_override/0 = SubResource("BuildingMediumMat")
 
 [node name="Building_CP3_Tall1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 7, 26)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -12, 7, 46)
 collision_layer = 1
 collision_mask = 0
 
@@ -234,7 +234,7 @@ mesh = SubResource("BuildingTallMesh")
 surface_material_override/0 = SubResource("BuildingTallMat")
 
 [node name="Building_CP3_Small1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 4, 28)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 10, 4, 48)
 collision_layer = 1
 collision_mask = 0
 
@@ -246,7 +246,7 @@ mesh = SubResource("BuildingSmallMesh")
 surface_material_override/0 = SubResource("BuildingSmallMat")
 
 [node name="Building_CP3_Small2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 4, -27)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 4, -7)
 collision_layer = 1
 collision_mask = 0
 
@@ -258,7 +258,7 @@ mesh = SubResource("BuildingSmallMesh")
 surface_material_override/0 = SubResource("BuildingSmallMat")
 
 [node name="Building_CP3_Medium1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 6, -25)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 14, 6, -5)
 collision_layer = 1
 collision_mask = 0
 
@@ -270,7 +270,7 @@ mesh = SubResource("BuildingMediumMesh")
 surface_material_override/0 = SubResource("BuildingMediumMat")
 
 [node name="Building_CP3_Medium2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 6, 46)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 6, 66)
 collision_layer = 1
 collision_mask = 0
 
@@ -282,7 +282,7 @@ mesh = SubResource("BuildingMediumMesh")
 surface_material_override/0 = SubResource("BuildingMediumMat")
 
 [node name="Building_CP4_Small1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 4, 37)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 38, 4, 70)
 collision_layer = 1
 collision_mask = 0
 
@@ -294,7 +294,7 @@ mesh = SubResource("BuildingSmallMesh")
 surface_material_override/0 = SubResource("BuildingSmallMat")
 
 [node name="Building_CP4_Tall1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 7, 39)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 60, 7, 72)
 collision_layer = 1
 collision_mask = 0
 
@@ -306,7 +306,7 @@ mesh = SubResource("BuildingTallMesh")
 surface_material_override/0 = SubResource("BuildingTallMat")
 
 [node name="Building_CP4_Medium1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 6, -14)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 44, 6, 19)
 collision_layer = 1
 collision_mask = 0
 
@@ -318,7 +318,7 @@ mesh = SubResource("BuildingMediumMesh")
 surface_material_override/0 = SubResource("BuildingMediumMat")
 
 [node name="Building_CP4_Small2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 64, 4, -13)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 64, 4, 20)
 collision_layer = 1
 collision_mask = 0
 
@@ -330,7 +330,7 @@ mesh = SubResource("BuildingSmallMesh")
 surface_material_override/0 = SubResource("BuildingSmallMat")
 
 [node name="Building_CP4_Small3" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 52, 4, 57)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 52, 4, 90)
 collision_layer = 1
 collision_mask = 0
 
@@ -342,7 +342,7 @@ mesh = SubResource("BuildingSmallMesh")
 surface_material_override/0 = SubResource("BuildingSmallMat")
 
 [node name="Building_CP5_Medium1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 88, 6, 14)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 88, 6, -9)
 collision_layer = 1
 collision_mask = 0
 
@@ -354,7 +354,7 @@ mesh = SubResource("BuildingMediumMesh")
 surface_material_override/0 = SubResource("BuildingMediumMat")
 
 [node name="Building_CP5_Small1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 110, 4, 16)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 110, 4, -7)
 collision_layer = 1
 collision_mask = 0
 
@@ -366,7 +366,7 @@ mesh = SubResource("BuildingSmallMesh")
 surface_material_override/0 = SubResource("BuildingSmallMat")
 
 [node name="Building_CP5_Tall1" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 94, 7, -39)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 94, 7, -62)
 collision_layer = 1
 collision_mask = 0
 
@@ -378,7 +378,7 @@ mesh = SubResource("BuildingTallMesh")
 surface_material_override/0 = SubResource("BuildingTallMat")
 
 [node name="Building_CP5_Medium2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 114, 6, -37)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 114, 6, -60)
 collision_layer = 1
 collision_mask = 0
 
@@ -390,7 +390,7 @@ mesh = SubResource("BuildingMediumMesh")
 surface_material_override/0 = SubResource("BuildingMediumMat")
 
 [node name="Building_CP5_Small2" type="StaticBody3D" parent="NavigationRegion3D/Buildings"]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 102, 4, 34)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 102, 4, 11)
 collision_layer = 1
 collision_mask = 0
 
@@ -410,23 +410,23 @@ capturable = false
 starting_owner_faction_id = 0
 
 [node name="CP1" parent="CommandPosts" instance=ExtResource("2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 0, 12)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -100, 0, 35)
 post_name = "Outpost North"
 
 [node name="CP2" parent="CommandPosts" instance=ExtResource("2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 0, -12)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -50, 0, -45)
 post_name = "Warehouse District"
 
 [node name="CP3" parent="CommandPosts" instance=ExtResource("2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 20)
 post_name = "Central Depot"
 
 [node name="CP4" parent="CommandPosts" instance=ExtResource("2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0, 12)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 50, 0, 45)
 post_name = "Market Row"
 
 [node name="CP5" parent="CommandPosts" instance=ExtResource("2")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0, -12)
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 100, 0, -35)
 post_name = "Outpost South"
 
 [node name="HomeB" parent="CommandPosts" instance=ExtResource("2")]

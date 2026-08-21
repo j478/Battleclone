@@ -37,6 +37,16 @@ func _ready() -> void:
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
 	MatchState.register_command_post(self)
+	# CommandPost.tscn pre-assigns a BoxMesh to CaptureBar so it has a
+	# sane shape in the editor -- but every instance of the scene shares
+	# that exact same Resource object unless given its own copy here, so
+	# without this every post's bar would resize/reposition in lockstep
+	# with whichever post last wrote to the shared mesh (looked like bars
+	# floating mid-air or growing the wrong way, since each post's own
+	# position offset was computed for ITS progress but the rendered mesh
+	# size belonged to whichever post updated last).
+	if capture_bar:
+		capture_bar.mesh = BoxMesh.new()
 	_update_capture_visuals()
 
 func _exit_tree() -> void:

@@ -41,7 +41,7 @@ const VEHICLE_OBSTACLE_LOOKAHEAD := 6.0
 
 const STARFIGHTER_SEEK_MAX_DIST := 120.0 # don't detour far on foot just to try for a fighter
 const FLIGHT_ENGAGE_RANGE := 120.0 # less than the cannon's range_meters -- commit before actually in range
-const FLIGHT_FIRE_TOLERANCE_DEG := 10.0
+const FLIGHT_FIRE_TOLERANCE_DEG := 20.0
 const FLIGHT_STEER_FULL_LOCK_DEG := 35.0
 const FLIGHT_THROTTLE_EASE_DEG := 60.0
 const FLIGHT_THROTTLE_MIN := 0.35 # keep flying forward even mid-turn, never stall out
@@ -573,10 +573,27 @@ func _tick_flight_engage() -> void:
 		return
 
 	var vehicle: Vehicle = possessed_vehicle
-	_steer_flight_toward(vehicle, _target_enemy.global_position)
-
 	var to_target: Vector3 = _target_enemy.global_position - vehicle.global_position
 	var dist: float = to_target.length()
+
+	# Lead pursuit, not pure pursuit: steer toward where the target will
+	# BE, not where it currently is. Two similarly-fast fighters both
+	# always turning toward each other's *current* position never
+	# actually close the distance -- it degenerates into an endless
+	# tail-chase circle, since the aim point keeps sliding away at
+	# roughly the same rate the pursuer closes on it. Lead time is capped
+	# low (well under the full time-to-intercept) rather than fully
+	# solved for intercept -- a full-solution lead at close range and low
+	# separation produces a predicted point that swings wildly relative
+	# to actual heading, which (confirmed live) left the nose reliably
+	# pointed at empty air instead of the target even at point-blank
+	# range. This is a deliberately modest correction: enough to break
+	# the circle, not so much it overshoots into never lining up a shot.
+	var own_speed: float = vehicle.vehicle_data.max_speed if vehicle.vehicle_data else 34.0
+	var lead_time: float = clamp(dist / max(own_speed, 1.0), 0.0, 0.6)
+	var predicted_pos: Vector3 = _target_enemy.global_position + _target_enemy.velocity * lead_time
+	_steer_flight_toward(vehicle, predicted_pos)
+
 	var forward: Vector3 = -vehicle.global_transform.basis.z
 	var aligned: bool = dist > 0.01 and forward.dot(to_target / dist) >= cos(deg_to_rad(FLIGHT_FIRE_TOLERANCE_DEG))
 

@@ -102,6 +102,15 @@ func _fire_hitscan(origin: Vector3, direction: Vector3) -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, end)
 	query.exclude = [shooter.get_rid()] if shooter.has_method("get_rid") else []
 	query.collision_mask = (1 << 0) | (1 << 1) # world + units
+	# The muzzle sits ahead of the shooter's own body, so at close range
+	# (vehicles especially -- their collision capsules run nose-to-tail)
+	# the ray origin can end up already inside the target's collision
+	# shape. intersect_ray() silently reports no hit for a shape the ray
+	# starts inside unless told otherwise, which meant point-blank shots
+	# fired dead-on simply never registered -- confirmed via a headless
+	# two-fighter dogfight harness where fire_held stayed true at 4m/0deg
+	# alignment but shields fully regenerated instead of dropping.
+	query.hit_from_inside = true
 	var result: Dictionary = space_state.intersect_ray(query)
 
 	var hit_point := end
@@ -128,6 +137,15 @@ func _fire_heal(origin: Vector3, direction: Vector3) -> void:
 	var query := PhysicsRayQueryParameters3D.create(origin, end)
 	query.exclude = [shooter.get_rid()] if shooter.has_method("get_rid") else []
 	query.collision_mask = (1 << 0) | (1 << 1) # world + units
+	# The muzzle sits ahead of the shooter's own body, so at close range
+	# (vehicles especially -- their collision capsules run nose-to-tail)
+	# the ray origin can end up already inside the target's collision
+	# shape. intersect_ray() silently reports no hit for a shape the ray
+	# starts inside unless told otherwise, which meant point-blank shots
+	# fired dead-on simply never registered -- confirmed via a headless
+	# two-fighter dogfight harness where fire_held stayed true at 4m/0deg
+	# alignment but shields fully regenerated instead of dropping.
+	query.hit_from_inside = true
 	var result: Dictionary = space_state.intersect_ray(query)
 
 	var hit_point := end

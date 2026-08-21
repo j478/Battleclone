@@ -45,6 +45,10 @@ const FLIGHT_FIRE_TOLERANCE_DEG := 20.0
 const FLIGHT_STEER_FULL_LOCK_DEG := 35.0
 const FLIGHT_THROTTLE_EASE_DEG := 60.0
 const FLIGHT_THROTTLE_MIN := 0.35 # keep flying forward even mid-turn, never stall out
+const FLIGHT_DOGFIGHT_RANGE := 35.0 # inside this, bleed speed so merges aren't instant flybys
+const FLIGHT_DOGFIGHT_THROTTLE_CAP := 0.5
+const FLIGHT_DOGFIGHT_MAX_TOLERANCE_DEG := 55.0 # ceiling the ramp below widens toward
+const FLIGHT_DOGFIGHT_RAMP_TIME := 10.0 # seconds of sustained engagement to reach the ceiling
 const FLIGHT_MIN_ALTITUDE := 12.0 # Vehicle.gd has no floor of its own -- AI has to self-impose one
 const FLIGHT_MIN_ALTITUDE_CLIMB_TARGET := 30.0 # absolute altitude to climb toward once under the floor
 const FLIGHT_PATROL_MIN_ALT := 20.0
@@ -72,6 +76,11 @@ var possessed_vehicle: Vehicle = null
 
 # Flight patrol (wandering waypoint while no enemy fighter is visible)
 var _flight_patrol_target: Vector3 = Vector3.ZERO
+
+# Flight engage: when the current dogfight target was first acquired, so
+# a sustained fight can widen its own firing tolerance the longer it drags
+# on (see FLIGHT_DOGFIGHT_RAMP_TIME).
+var _flight_engage_started_msec: int = 0
 
 func _ready() -> void:
 	nav_agent.path_desired_distance = 0.75
@@ -531,6 +540,8 @@ func _make_flight_decision() -> void:
 			return
 
 	_target_enemy = _find_visible_flight_enemy()
+	if _target_enemy:
+		_flight_engage_started_msec = Time.get_ticks_msec()
 	_vehicle_state = VehicleBotState.FLIGHT_ENGAGE if _target_enemy else VehicleBotState.FLIGHT_PATROL
 
 ## Deliberately separate from _find_visible_enemy (which returns Units
@@ -594,8 +605,33 @@ func _tick_flight_engage() -> void:
 	var predicted_pos: Vector3 = _target_enemy.global_position + _target_enemy.velocity * lead_time
 	_steer_flight_toward(vehicle, predicted_pos)
 
+	# _steer_flight_toward throttles purely off angular error, so two
+	# fighters converging nose-on at full speed just blow past each other
+	# every pass -- their combined closing speed leaves almost no time in
+	# the firing cone before they separate again, which (confirmed live)
+	# meant repeated close passes with barely any sustained fire and
+	# never a kill. Bleeding off speed once genuinely at dogfight range
+	# buys real tracking time in the merge instead of a single instant
+	# flyby.
+	if dist < FLIGHT_DOGFIGHT_RANGE:
+		vehicle.flight_throttle_input = min(vehicle.flight_throttle_input, FLIGHT_DOGFIGHT_THROTTLE_CAP)
+
+	# Two similarly-fast, similarly-agile fighters chasing each other's
+	# predicted position is a symmetric problem -- it settles into a
+	# stable orbit where neither ever out-turns the other (confirmed
+	# live: nose-to-target angle oscillating 40-140 degrees indefinitely,
+	# never converging inside the fire cone). Rather than chase a
+	# maneuvering fix for a stalemate that's an inherent equilibrium of
+	# equal-performance aircraft, widen the fire cone the longer a single
+	# engagement drags on with no kill -- guarantees a sustained furball
+	# eventually lands enough stray hits to resolve, while keeping the
+	# opening merge (where this ramp is still near its floor) demanding
+	# real alignment.
+	var engage_seconds: float = (Time.get_ticks_msec() - _flight_engage_started_msec) / 1000.0
+	var tolerance_deg: float = lerp(FLIGHT_FIRE_TOLERANCE_DEG, FLIGHT_DOGFIGHT_MAX_TOLERANCE_DEG, clamp(engage_seconds / FLIGHT_DOGFIGHT_RAMP_TIME, 0.0, 1.0))
+
 	var forward: Vector3 = -vehicle.global_transform.basis.z
-	var aligned: bool = dist > 0.01 and forward.dot(to_target / dist) >= cos(deg_to_rad(FLIGHT_FIRE_TOLERANCE_DEG))
+	var aligned: bool = dist > 0.01 and forward.dot(to_target / dist) >= cos(deg_to_rad(tolerance_deg))
 
 	var weapon_data: WeaponData = vehicle.weapon_handler.weapon_data
 	var in_range: bool = weapon_data != null and dist <= weapon_data.range_meters * 0.85

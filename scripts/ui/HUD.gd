@@ -55,18 +55,24 @@ func bind_to_vehicle(vehicle: Vehicle, seat: VehicleSeat) -> void:
 	_bound_seat_role = seat.seat_role
 	crosshair.visible = true
 
-## The driver's weapon fires along the vehicle's heading, not camera
-## look direction (steering a chassis and aiming a camera don't mix),
-## so a screen-centered crosshair would lie about where shots go. Project
-## the vehicle's actual forward direction into view instead, and fade it
-## out when that direction isn't even on screen. The gunner's turret DOES
-## follow the camera, so it keeps the normal centered crosshair.
+## A ground/hover driver's weapon fires along the vehicle's heading, not
+## camera look direction (steering a chassis and aiming a camera don't
+## mix), so a screen-centered crosshair would lie about where shots go.
+## Project the vehicle's actual forward direction into view instead, and
+## fade it out when that direction isn't even on screen. A FLIGHT
+## driver's mouse steers the hull itself (see PlayerInput._is_flying),
+## so camera look and heading never diverge there -- same as the
+## gunner's turret, it keeps the normal centered crosshair.
 func _process(_delta: float) -> void:
 	_update_kill_feed_expiry()
 
 	if not crosshair.visible:
 		return
-	if _bound_vehicle and is_instance_valid(_bound_vehicle) and _bound_seat_role == VehicleSeat.SeatRole.DRIVER:
+	var is_steered_driver: bool = _bound_vehicle and is_instance_valid(_bound_vehicle) \
+		and _bound_seat_role == VehicleSeat.SeatRole.DRIVER \
+		and _bound_vehicle.vehicle_data \
+		and _bound_vehicle.vehicle_data.movement_type != VehicleData.MovementType.FLIGHT
+	if is_steered_driver:
 		_update_driver_crosshair()
 	else:
 		crosshair.modulate.a = 1.0

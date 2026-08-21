@@ -257,6 +257,8 @@ func _evaluate_vehicle_option() -> bool:
 			continue
 		if vehicle.health.is_dead:
 			continue
+		if vehicle.vehicle_data and vehicle.vehicle_data.movement_type == VehicleData.MovementType.FLIGHT:
+			continue # AI flying is out of scope for this pass -- don't let bots block the only seat
 		var dist_to_vehicle: float = unit.global_position.distance_to(vehicle.global_position)
 		if dist_to_vehicle > VEHICLE_SEEK_MAX_DETOUR:
 			continue

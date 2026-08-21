@@ -1,4 +1,4 @@
-[gd_scene load_steps=15 format=3]
+[gd_scene load_steps=17 format=3]
 
 [ext_resource type="Script" path="res://scripts/gamemode/ConquestMode.gd" id="1"]
 [ext_resource type="PackedScene" path="res://scenes/gamemode/CommandPost.tscn" id="2"]
@@ -11,6 +11,8 @@
 [ext_resource type="Resource" path="res://resources/vehicles/speeder_bike.tres" id="9"]
 [ext_resource type="PackedScene" path="res://scenes/vehicles/walker/Walker.tscn" id="10"]
 [ext_resource type="Resource" path="res://resources/vehicles/walker.tres" id="11"]
+[ext_resource type="PackedScene" path="res://scenes/vehicles/starfighter/Starfighter.tscn" id="12"]
+[ext_resource type="Resource" path="res://resources/vehicles/starfighter.tres" id="13"]
 
 [sub_resource type="Environment" id="Environment_1"]
 background_mode = 1
@@ -202,6 +204,20 @@ vehicle_scene = ExtResource("10")
 vehicle_data = ExtResource("11")
 faction_id = 1
 respawn_delay = 35.0
+
+[node name="StarfighterPadA" parent="VehiclePads" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -45, 0, 16)
+vehicle_scene = ExtResource("12")
+vehicle_data = ExtResource("13")
+faction_id = 0
+respawn_delay = 40.0
+
+[node name="StarfighterPadB" parent="VehiclePads" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 45, 0, -16)
+vehicle_scene = ExtResource("12")
+vehicle_data = ExtResource("13")
+faction_id = 1
+respawn_delay = 40.0
 
 [node name="UnitsRoot" type="Node3D" parent="."]
 

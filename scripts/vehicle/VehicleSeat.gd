@@ -93,6 +93,9 @@ func exit_seat() -> Transform3D:
 		if seat_role == SeatRole.DRIVER:
 			vehicle.move_input = Vector2.ZERO
 			vehicle.fire_held = false
+			vehicle.flight_pitch_input = 0.0
+			vehicle.flight_yaw_input = 0.0
+			vehicle.flight_throttle_input = 0.0
 		else:
 			vehicle.turret_fire_held = false
 	vacated.emit(self)

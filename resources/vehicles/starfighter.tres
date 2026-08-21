@@ -1,0 +1,24 @@
+[gd_resource type="Resource" script_class="VehicleData" load_steps=3 format=3]
+
+[ext_resource type="Script" path="res://scripts/data/VehicleData.gd" id="1"]
+[ext_resource type="Resource" path="res://resources/weapons/starfighter_cannon.tres" id="2"]
+
+[resource]
+script = ExtResource("1")
+vehicle_name = "Starfighter"
+max_health = 140.0
+max_shield = 100.0
+shield_regen_per_second = 20.0
+shield_regen_delay = 4.0
+max_speed = 34.0
+acceleration = 16.0
+turn_rate_degrees = 70.0
+movement_type = 2
+hover_height = 0.0
+pitch_rate_degrees = 55.0
+flight_ceiling = 70.0
+bank_angle_degrees = 35.0
+primary_weapon = ExtResource("2")
+turret_weapon = null
+occupant_eject_damage = 35.0
+body_color = Color(0.55, 0.6, 0.68, 1)

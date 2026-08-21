@@ -376,6 +376,19 @@ func force_exit_vehicle(instigator: Node, eject_damage: float) -> void:
 # ---------------------------------------------------------------------------
 
 func _make_vehicle_driver_decision() -> void:
+	# Stick with the current target while it's still valid instead of
+	# re-scanning from scratch every decision tick: _find_visible_enemy's
+	# LOS raycast is a single ray at range, and a momentary miss (terrain,
+	# another vehicle, a bad angle) would otherwise drop ENGAGE for one
+	# tick, drive forward, then reacquire the same enemy and stop again --
+	# a rapid stop/go oscillation that looked like "inching forward" while
+	# also leaving the vehicle sitting half-exposed the whole time instead
+	# of committing to the fight.
+	if _vehicle_state == VehicleBotState.ENGAGE and is_instance_valid(_target_enemy) and not _target_enemy.health.is_dead:
+		var dist_to_target: float = possessed_vehicle.global_position.distance_to(_target_enemy.global_position)
+		if dist_to_target <= VEHICLE_ENGAGE_RANGE * 1.2:
+			return
+
 	_target_enemy = _find_visible_enemy(possessed_vehicle.global_position, VEHICLE_ENGAGE_RANGE)
 	if _target_enemy:
 		_vehicle_state = VehicleBotState.ENGAGE

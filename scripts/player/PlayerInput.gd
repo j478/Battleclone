@@ -54,6 +54,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_exit_vehicle()
 		elif nearby_seat:
 			_enter_vehicle(nearby_seat)
+	elif event.is_action_pressed("jump") and _is_flying():
+		_toggle_flight_liftoff_or_landing()
 	elif event.is_action_pressed("pause"):
 		var captured := Input.mouse_mode == Input.MOUSE_MODE_CAPTURED
 		Input.mouse_mode = Input.MOUSE_MODE_VISIBLE if captured else Input.MOUSE_MODE_CAPTURED
@@ -115,6 +117,19 @@ func _enter_vehicle(seat: VehicleSeat) -> void:
 		active_camera_rig.activate()
 	EventBus.emit_signal("interact_prompt_changed", "")
 	EventBus.emit_signal("player_entered_vehicle", possessed_vehicle, possessed_seat)
+
+## Deliberately a separate key from seat-exit (interact/F) so a mistimed
+## bail-out attempt can never eject the player mid-air when they meant
+## to land, and vice versa. Jump toggles between the two ends of flight
+## depending on current state: lift off if parked, land if close enough
+## to the ground, or do nothing if airborne and too high to land yet.
+func _toggle_flight_liftoff_or_landing() -> void:
+	if not is_instance_valid(possessed_vehicle) or possessed_vehicle.is_flight_transitioning():
+		return
+	if possessed_vehicle.is_grounded():
+		possessed_vehicle.begin_flight_liftoff()
+	elif possessed_vehicle.can_land():
+		possessed_vehicle.begin_flight_landing()
 
 func _exit_vehicle() -> void:
 	var seat := possessed_seat

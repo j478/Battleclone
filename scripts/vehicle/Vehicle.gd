@@ -16,6 +16,11 @@ const FLIGHT_BOUNDARY_PUSH := 20.0
 const BANK_LERP_SPEED := 6.0
 const LIFTOFF_HEIGHT := 4.0 # meters climbed automatically on boarding, BFII-style
 const LIFTOFF_RISE_SPEED := 5.0
+const LANDING_TRIGGER_HEIGHT := 12.0 # must be within this many meters of the ground to land
+const LANDING_DESCENT_SPEED := 6.0
+const LANDING_REST_EPSILON := 0.15
+
+signal landing_completed
 
 @export var faction_id: int = -1
 @export var vehicle_data: VehicleData
@@ -50,6 +55,8 @@ var _flight_pitch: float = 0.0
 var _flight_initialized: bool = false
 var _liftoff_active: bool = false
 var _liftoff_target_y: float = 0.0
+var _landing_active: bool = false
+var _grounded: bool = true # parked/landed vs. airborne, for the jump-key liftoff/land toggle
 
 func _ready() -> void:
 	add_to_group("vehicles")
@@ -162,8 +169,15 @@ func begin_flight_liftoff() -> void:
 	_flight_pitch = 0.0
 	_flight_initialized = true
 	_liftoff_active = true
+	_grounded = false
 	_liftoff_target_y = global_position.y + LIFTOFF_HEIGHT
 	velocity = Vector3.ZERO
+
+func is_grounded() -> bool:
+	return _grounded
+
+func is_flight_transitioning() -> bool:
+	return _liftoff_active or _landing_active
 
 func _process_liftoff(delta: float) -> void:
 	global_transform.basis = Basis(Vector3.UP, _flight_yaw)
@@ -171,6 +185,53 @@ func _process_liftoff(delta: float) -> void:
 	if global_position.y >= _liftoff_target_y:
 		_liftoff_active = false
 		velocity = Vector3.ZERO
+	if hull_mesh:
+		hull_mesh.rotation.z = lerp_angle(hull_mesh.rotation.z, 0.0, BANK_LERP_SPEED * delta)
+
+func _get_height_above_ground(max_distance: float = 200.0) -> float:
+	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var from: Vector3 = global_position
+	var to: Vector3 = global_position + Vector3.DOWN * max_distance
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.exclude = [get_rid()]
+	query.collision_mask = 1 # world only
+	var result: Dictionary = space_state.intersect_ray(query)
+	return global_position.y - result.position.y if result else INF
+
+func can_land() -> bool:
+	return _get_height_above_ground() <= LANDING_TRIGGER_HEIGHT
+
+## The counterpart to begin_flight_liftoff(): a controlled, input-ignoring
+## descent to whatever's directly below. Bound to a separate key from
+## seat-exit (see PlayerInput) so landing near the ground and bailing
+## out mid-air can never be confused for each other. The player stays
+## seated once landed -- jump takes off again, interact hops out.
+func begin_flight_landing() -> void:
+	_liftoff_active = false
+	_landing_active = true
+
+func _process_landing(delta: float) -> void:
+	_flight_pitch = move_toward(_flight_pitch, 0.0, deg_to_rad(90.0) * delta)
+	global_transform.basis = Basis(Vector3.UP, _flight_yaw) * Basis(Vector3.RIGHT, _flight_pitch)
+
+	var space_state: PhysicsDirectSpaceState3D = get_world_3d().direct_space_state
+	var from: Vector3 = global_position + Vector3.UP * 0.5
+	var to: Vector3 = global_position + Vector3.DOWN * 50.0
+	var query := PhysicsRayQueryParameters3D.create(from, to)
+	query.exclude = [get_rid()]
+	query.collision_mask = 1 # world only
+	var result: Dictionary = space_state.intersect_ray(query)
+	var rest_y: float = result.position.y if result else global_position.y
+
+	if global_position.y - rest_y > LANDING_REST_EPSILON:
+		velocity = Vector3.DOWN * LANDING_DESCENT_SPEED
+	else:
+		global_position.y = rest_y
+		velocity = Vector3.ZERO
+		_landing_active = false
+		_grounded = true
+		landing_completed.emit()
+
 	if hull_mesh:
 		hull_mesh.rotation.z = lerp_angle(hull_mesh.rotation.z, 0.0, BANK_LERP_SPEED * delta)
 
@@ -188,6 +249,10 @@ func _process_flight(delta: float) -> void:
 
 	if _liftoff_active:
 		_process_liftoff(delta)
+		return
+
+	if _landing_active:
+		_process_landing(delta)
 		return
 
 	var yaw_rate: float = deg_to_rad(vehicle_data.turn_rate_degrees if vehicle_data else 90.0)

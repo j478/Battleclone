@@ -93,6 +93,12 @@ func _active_weapon_handler() -> WeaponHandler:
 		return secondary_weapon_handler
 	return weapon_handler
 
+## Lets PlayerInput decide whether holding fire should keep firing
+## (WeaponData.is_automatic) without reaching into the private
+## _active_weapon_handler() itself.
+func get_active_weapon_data() -> WeaponData:
+	return _active_weapon_handler().weapon_data
+
 ## Stand-in held-weapon model, sized/colored/positioned per WeaponData so
 ## switching actually looks like switching. The mesh's front (muzzle
 ## end) stays pinned to the Muzzle marker regardless of length -- only

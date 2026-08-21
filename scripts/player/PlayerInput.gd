@@ -73,7 +73,14 @@ func _physics_process(delta: float) -> void:
 	unit.look_direction = camera_rig.get_look_direction()
 	unit.sprint_held = Input.is_action_pressed("sprint")
 	unit.crouch_held = Input.is_action_pressed("crouch")
-	unit.fire_held = Input.is_action_pressed("fire")
+	# Non-automatic weapons (sniper rifle, pistol, rocket launcher) need a
+	# fresh click per shot -- holding the button down only fires once,
+	# same as WeaponData.is_automatic already implies for everything else.
+	var active_weapon: WeaponData = unit.get_active_weapon_data()
+	if active_weapon and not active_weapon.is_automatic:
+		unit.fire_held = Input.is_action_just_pressed("fire")
+	else:
+		unit.fire_held = Input.is_action_pressed("fire")
 	unit.reload_pressed = Input.is_action_just_pressed("reload")
 	if Input.is_action_just_pressed("switch_weapon"):
 		unit.switch_weapon_pressed = true

@@ -235,6 +235,22 @@ func _process_landing(delta: float) -> void:
 	if hull_mesh:
 		hull_mesh.rotation.z = lerp_angle(hull_mesh.rotation.z, 0.0, BANK_LERP_SPEED * delta)
 
+## While grounded (parked on a pad, or freshly landed), attitude and
+## throttle input are completely ignored -- the ship sits dead still and
+## dead level until begin_flight_liftoff() explicitly takes it airborne
+## again. Without this gate, a human at the stick could pitch/yaw/throttle
+## a grounded ship exactly like it was already flying, which is exactly
+## the "tail end lifts into the air while wedged against the ground"
+## problem liftoff/landing exist to prevent -- and it also let the ship
+## fly off under its own power without ever going through
+## begin_flight_liftoff(), leaving is_grounded() lying about reality and
+## breaking the jump-key liftoff/land toggle.
+func _process_parked(delta: float) -> void:
+	global_transform.basis = Basis(Vector3.UP, _flight_yaw)
+	velocity = Vector3.ZERO
+	if hull_mesh:
+		hull_mesh.rotation.z = lerp_angle(hull_mesh.rotation.z, 0.0, BANK_LERP_SPEED * delta)
+
 ## Rebuilds the hull's basis fresh every frame from two persistent,
 ## independently-clamped scalars rather than stacking rotate_y()/
 ## rotate_object_local() calls -- incremental local-axis rotation drifts
@@ -253,6 +269,10 @@ func _process_flight(delta: float) -> void:
 
 	if _landing_active:
 		_process_landing(delta)
+		return
+
+	if _grounded:
+		_process_parked(delta)
 		return
 
 	var yaw_rate: float = deg_to_rad(vehicle_data.turn_rate_degrees if vehicle_data else 90.0)

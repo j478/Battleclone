@@ -47,6 +47,11 @@ const FLIGHT_THROTTLE_EASE_DEG := 60.0
 const FLIGHT_THROTTLE_MIN := 0.35 # keep flying forward even mid-turn, never stall out
 const FLIGHT_DOGFIGHT_RANGE := 35.0 # inside this, bleed speed so merges aren't instant flybys
 const FLIGHT_DOGFIGHT_THROTTLE_CAP := 0.5
+const FLIGHT_DOGFIGHT_LEAD_CAP := 0.15 # short lead once close -- long lead here swings the nose past instead of tracking
+const FLIGHT_DOGFIGHT_PASS_OFFSET := 14.0 # aim beside the target at close range, not straight at it -- see _tick_flight_engage
+const FLIGHT_COLLISION_AVOID_RANGE := 15.0 # only this close does the pass-offset kick in -- applying it further out stalls into a wide, never-realigning mutual orbit
+const FLIGHT_DOGFIGHT_STALEMATE_TIME := 4.0 # seconds engaged with no kill before forcing a break-off -- most of a longer window is spent circling unproductively after the brief useful merge window closes
+const FLIGHT_DOGFIGHT_BREAKOFF_DURATION := 2.5 # seconds spent extending away before re-attacking
 const FLIGHT_DOGFIGHT_MAX_TOLERANCE_DEG := 55.0 # ceiling the ramp below widens toward
 const FLIGHT_DOGFIGHT_RAMP_TIME := 10.0 # seconds of sustained engagement to reach the ceiling
 const FLIGHT_MIN_ALTITUDE := 12.0 # Vehicle.gd has no floor of its own -- AI has to self-impose one
@@ -79,8 +84,14 @@ var _flight_patrol_target: Vector3 = Vector3.ZERO
 
 # Flight engage: when the current dogfight target was first acquired, so
 # a sustained fight can widen its own firing tolerance the longer it drags
-# on (see FLIGHT_DOGFIGHT_RAMP_TIME).
+# on (see FLIGHT_DOGFIGHT_RAMP_TIME). _flight_pass_side is which lateral
+# side the close-range aim offset breaks toward for this engagement --
+# picked once per acquisition (not re-rolled every tick) so a fighter
+# commits to one side of a pass instead of zig-zagging.
 var _flight_engage_started_msec: int = 0
+var _flight_pass_side: float = 1.0
+var _flight_breaking_off: bool = false
+var _flight_breakoff_until_msec: int = 0
 
 func _ready() -> void:
 	nav_agent.path_desired_distance = 0.75
@@ -537,11 +548,25 @@ func _make_flight_decision() -> void:
 	if _vehicle_state == VehicleBotState.FLIGHT_ENGAGE and is_instance_valid(_target_enemy) and not _target_enemy.health.is_dead:
 		var dist_to_target: float = possessed_vehicle.global_position.distance_to(_target_enemy.global_position)
 		if dist_to_target <= FLIGHT_ENGAGE_RANGE * 1.2:
+			# Two identical, perfectly mirrored fighters under the same
+			# deterministic steering law is an exactly symmetric system --
+			# it settles into a stable mutual orbit that repeats forever
+			# with no third merge (confirmed live over 90+ seconds). Re-
+			# rolling the pass side on this bot's own decision cadence
+			# (already independently randomized per bot, so the two
+			# fighters' rolls land at different, uncorrelated moments)
+			# breaks that exact symmetry over time without needing every
+			# physics frame to jitter.
+			_flight_pass_side = 1.0 if randf() < 0.5 else -1.0
 			return
 
 	_target_enemy = _find_visible_flight_enemy()
 	if _target_enemy:
 		_flight_engage_started_msec = Time.get_ticks_msec()
+		_flight_breaking_off = false
+		var to_new_target: Vector3 = _target_enemy.global_position - possessed_vehicle.global_position
+		var fwd: Vector3 = -possessed_vehicle.global_transform.basis.z
+		_flight_pass_side = 1.0 if fwd.cross(to_new_target).y >= 0.0 else -1.0
 	_vehicle_state = VehicleBotState.FLIGHT_ENGAGE if _target_enemy else VehicleBotState.FLIGHT_PATROL
 
 ## Deliberately separate from _find_visible_enemy (which returns Units
@@ -587,23 +612,70 @@ func _tick_flight_engage() -> void:
 	var to_target: Vector3 = _target_enemy.global_position - vehicle.global_position
 	var dist: float = to_target.length()
 
-	# Lead pursuit, not pure pursuit: steer toward where the target will
-	# BE, not where it currently is. Two similarly-fast fighters both
-	# always turning toward each other's *current* position never
-	# actually close the distance -- it degenerates into an endless
-	# tail-chase circle, since the aim point keeps sliding away at
-	# roughly the same rate the pursuer closes on it. Lead time is capped
-	# low (well under the full time-to-intercept) rather than fully
-	# solved for intercept -- a full-solution lead at close range and low
-	# separation produces a predicted point that swings wildly relative
-	# to actual heading, which (confirmed live) left the nose reliably
-	# pointed at empty air instead of the target even at point-blank
-	# range. This is a deliberately modest correction: enough to break
-	# the circle, not so much it overshoots into never lining up a shot.
+	# Two similarly-performing fighters continuously chasing/tracking each
+	# other settles into some stable relative orbit -- symmetric or not,
+	# close range or not -- that just never lines guns back up again
+	# (confirmed live over multiple 90s runs: distance and angle drift in
+	# a slow, repeating cycle with fire staying false for the rest of the
+	# fight). Rather than chase a maneuvering law proven to converge for
+	# every possible relative geometry, force a clean break every so
+	# often: fly hard away from the target for a few seconds, then let
+	# the long-range lead-pursuit intercept below -- which has converged
+	# to a real merge every single time it's actually been exercised --
+	# bring them back together for a fresh pass.
+	var engage_seconds: float = (Time.get_ticks_msec() - _flight_engage_started_msec) / 1000.0
+	if engage_seconds > FLIGHT_DOGFIGHT_STALEMATE_TIME and not _flight_breaking_off:
+		_flight_breaking_off = true
+		_flight_breakoff_until_msec = Time.get_ticks_msec() + int(FLIGHT_DOGFIGHT_BREAKOFF_DURATION * 1000.0)
+
+	if _flight_breaking_off:
+		if Time.get_ticks_msec() >= _flight_breakoff_until_msec:
+			_flight_breaking_off = false
+			_flight_engage_started_msec = Time.get_ticks_msec()
+		else:
+			var away_pos: Vector3 = vehicle.global_position - to_target.normalized() * 50.0
+			_steer_flight_toward(vehicle, away_pos)
+			vehicle.fire_held = false
+			return
+
+	# Lead pursuit, not pure pursuit, to close the distance: aim where the
+	# target will BE, not where it currently is -- two similarly-fast
+	# fighters both turning toward each other's *current* position never
+	# actually close the gap (it degenerates into an endless tail-chase
+	# circle, since the aim point slides away at roughly the closing
+	# rate). Lead time is capped low rather than fully solved for
+	# intercept -- a full-solution lead at close range swings wildly
+	# relative to actual heading and (confirmed live) left the nose
+	# pointed at empty air even point-blank. Once genuinely close, the
+	# cap drops further still, since a long lead here predicts a point
+	# tens of meters off and just swings the nose past the target instead
+	# of tracking it.
 	var own_speed: float = vehicle.vehicle_data.max_speed if vehicle.vehicle_data else 34.0
-	var lead_time: float = clamp(dist / max(own_speed, 1.0), 0.0, 0.6)
-	var predicted_pos: Vector3 = _target_enemy.global_position + _target_enemy.velocity * lead_time
-	_steer_flight_toward(vehicle, predicted_pos)
+	var lead_cap: float = FLIGHT_DOGFIGHT_LEAD_CAP if dist < FLIGHT_DOGFIGHT_RANGE else 0.6
+	var lead_time: float = clamp(dist / max(own_speed, 1.0), 0.0, lead_cap)
+	var aim_pos: Vector3 = _target_enemy.global_position + _target_enemy.velocity * lead_time
+
+	# Aiming straight at the target all the way to point-blank flies both
+	# fighters onto a literal head-on collision course -- their collision
+	# capsules then physically block each other and they freeze nose-to-
+	# nose trading fire instead of passing by (confirmed live: a tight
+	# lead alone converges to exactly this stationary standoff). Offsetting
+	# the aim point to one side turns the merge into an actual flyby. This
+	# only kicks in in the last few meters, though -- applying it across
+	# the whole dogfight range instead (also confirmed live) makes both
+	# fighters chase a point that's always offset from the real target,
+	# which stalls into a smooth, wide, perfectly stable mutual orbit at a
+	# fixed angular offset that never realigns for a second pass. The
+	# offset side is picked once per engagement (_flight_pass_side) so a
+	# fighter commits to passing on one side instead of oscillating
+	# between left and right every tick.
+	if dist < FLIGHT_COLLISION_AVOID_RANGE:
+		var flat_to_target: Vector3 = Vector3(to_target.x, 0.0, to_target.z)
+		if flat_to_target.length_squared() > 0.01:
+			var lateral: Vector3 = flat_to_target.normalized().cross(Vector3.UP) * _flight_pass_side
+			aim_pos += lateral * FLIGHT_DOGFIGHT_PASS_OFFSET
+
+	_steer_flight_toward(vehicle, aim_pos)
 
 	# _steer_flight_toward throttles purely off angular error, so two
 	# fighters converging nose-on at full speed just blow past each other
@@ -627,7 +699,6 @@ func _tick_flight_engage() -> void:
 	# eventually lands enough stray hits to resolve, while keeping the
 	# opening merge (where this ramp is still near its floor) demanding
 	# real alignment.
-	var engage_seconds: float = (Time.get_ticks_msec() - _flight_engage_started_msec) / 1000.0
 	var tolerance_deg: float = lerp(FLIGHT_FIRE_TOLERANCE_DEG, FLIGHT_DOGFIGHT_MAX_TOLERANCE_DEG, clamp(engage_seconds / FLIGHT_DOGFIGHT_RAMP_TIME, 0.0, 1.0))
 
 	var forward: Vector3 = -vehicle.global_transform.basis.z

@@ -470,8 +470,36 @@ vehicle_data = ExtResource("13")
 faction_id = 0
 respawn_delay = 40.0
 
+[node name="StarfighterPadA2" parent="VehiclePads" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -135, 0, -48)
+vehicle_scene = ExtResource("12")
+vehicle_data = ExtResource("13")
+faction_id = 0
+respawn_delay = 40.0
+
+[node name="StarfighterPadA3" parent="VehiclePads" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -135, 0, 72)
+vehicle_scene = ExtResource("12")
+vehicle_data = ExtResource("13")
+faction_id = 0
+respawn_delay = 40.0
+
 [node name="StarfighterPadB" parent="VehiclePads" instance=ExtResource("7")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 135, 0, -48)
+vehicle_scene = ExtResource("12")
+vehicle_data = ExtResource("13")
+faction_id = 1
+respawn_delay = 40.0
+
+[node name="StarfighterPadB2" parent="VehiclePads" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 135, 0, 48)
+vehicle_scene = ExtResource("12")
+vehicle_data = ExtResource("13")
+faction_id = 1
+respawn_delay = 40.0
+
+[node name="StarfighterPadB3" parent="VehiclePads" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 135, 0, -72)
 vehicle_scene = ExtResource("12")
 vehicle_data = ExtResource("13")
 faction_id = 1

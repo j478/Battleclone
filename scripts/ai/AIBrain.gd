@@ -37,7 +37,9 @@ const VEHICLE_THROTTLE_EASE_DEG := 90.0
 const VEHICLE_THROTTLE_MIN := 0.2 # keeps the vehicle pivoting toward target instead of stalling
 const VEHICLE_FIRE_HEADING_TOLERANCE_DEG := 15.0 # forward-fixed weapons shouldn't fire while badly misaligned
 const MAP_BOUNDARY_LIMIT := 180.0 # ground extends to ~210; steer back well before actually reaching the edge
-const VEHICLE_OBSTACLE_LOOKAHEAD := 6.0
+const VEHICLE_OBSTACLE_LOOKAHEAD := 10.0 # was 6.0 -- too short for a slow turner (walker: 50deg/s) to react in time, confirmed live as driving straight into a building
+const VEHICLE_OBSTACLE_CRITICAL_DIST := 3.5 # inside this, avoidance overrides steering outright instead of just blending
+const VEHICLE_OBSTACLE_CRITICAL_THROTTLE := 0.15 # near-stop so a slow turner can actually pivot clear instead of still closing on the wall while turning
 
 const STARFIGHTER_SEEK_MAX_DIST := 120.0 # don't detour far on foot just to try for a fighter
 const FLIGHT_ENGAGE_RANGE := 120.0 # less than the cannon's range_meters -- commit before actually in range
@@ -834,10 +836,22 @@ func _compute_steer_throttle(vehicle: Vehicle, target_pos: Vector3) -> Vector2:
 	var steer: float = clamp(-heading_error / deg_to_rad(VEHICLE_STEER_FULL_LOCK_DEG), -1.0, 1.0)
 	var throttle: float = clamp(1.0 - abs(heading_error) / deg_to_rad(VEHICLE_THROTTLE_EASE_DEG), VEHICLE_THROTTLE_MIN, 1.0)
 
-	var obstacle_steer_bias: float = _obstacle_steer_bias(vehicle)
-	if obstacle_steer_bias != 0.0:
-		steer = clamp(steer + obstacle_steer_bias, -1.0, 1.0)
-		throttle *= 0.5
+	var avoidance: Dictionary = _obstacle_avoidance(vehicle)
+	if not avoidance.is_empty():
+		if avoidance.distance <= VEHICLE_OBSTACLE_CRITICAL_DIST:
+			# This close, blending a bias into the target-seeking steer
+			# isn't enough for a slow turner -- a walker's 50deg/s turn
+			# rate can't out-turn an obstacle it's still driving toward at
+			# half throttle, so it just grinds along the wall while slowly
+			# rotating (confirmed live). Override steering outright and
+			# nearly stop forward motion so it actually pivots clear
+			# before resuming toward the target.
+			steer = avoidance.bias
+			throttle = VEHICLE_OBSTACLE_CRITICAL_THROTTLE
+		else:
+			var closeness: float = 1.0 - (avoidance.distance - VEHICLE_OBSTACLE_CRITICAL_DIST) / (VEHICLE_OBSTACLE_LOOKAHEAD - VEHICLE_OBSTACLE_CRITICAL_DIST)
+			steer = clamp(steer + avoidance.bias * closeness, -1.0, 1.0)
+			throttle *= lerp(1.0, 0.5, closeness)
 
 	return Vector2(steer, throttle)
 
@@ -845,8 +859,9 @@ func _compute_steer_throttle(vehicle: Vehicle, target_pos: Vector3) -> Vector2:
 ## other units/vehicles, so it doesn't flinch away from soldiers or get
 ## confused avoiding the very vehicle it might be chasing) so vehicles
 ## swerve around obstacles directly ahead instead of just shoving into
-## them via plain collision.
-func _obstacle_steer_bias(vehicle: Vehicle) -> float:
+## them via plain collision. Returns {} if nothing's ahead, else
+## {"bias": steer direction to swerve away, "distance": how far off}.
+func _obstacle_avoidance(vehicle: Vehicle) -> Dictionary:
 	var forward: Vector3 = -vehicle.global_transform.basis.z
 	var from: Vector3 = vehicle.global_position + Vector3.UP * 0.5
 	var to: Vector3 = from + forward * VEHICLE_OBSTACLE_LOOKAHEAD
@@ -856,7 +871,8 @@ func _obstacle_steer_bias(vehicle: Vehicle) -> float:
 	query.collision_mask = 1 # world only
 	var result: Dictionary = space_state.intersect_ray(query)
 	if result.is_empty():
-		return 0.0
+		return {}
 	var right: Vector3 = forward.cross(Vector3.UP)
 	var to_hit: Vector3 = result.position - vehicle.global_position
-	return 1.0 if to_hit.dot(right) < 0.0 else -1.0
+	var bias: float = 1.0 if to_hit.dot(right) < 0.0 else -1.0
+	return {"bias": bias, "distance": vehicle.global_position.distance_to(result.position)}

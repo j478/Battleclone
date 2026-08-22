@@ -40,6 +40,7 @@ const MAP_BOUNDARY_LIMIT := 180.0 # ground extends to ~210; steer back well befo
 const VEHICLE_OBSTACLE_LOOKAHEAD := 10.0 # was 6.0 -- too short for a slow turner (walker: 50deg/s) to react in time, confirmed live as driving straight into a building
 const VEHICLE_OBSTACLE_CRITICAL_DIST := 3.5 # inside this, avoidance overrides steering outright instead of just blending
 const VEHICLE_OBSTACLE_CRITICAL_THROTTLE := 0.15 # near-stop so a slow turner can actually pivot clear instead of still closing on the wall while turning
+const VEHICLE_OBSTACLE_ESCAPE_DURATION := 1.2 # once critical, commit to one turn direction for this long instead of re-picking every frame
 
 const STARFIGHTER_SEEK_MAX_DIST := 120.0 # don't detour far on foot just to try for a fighter
 const FLIGHT_ENGAGE_RANGE := 120.0 # less than the cannon's range_meters -- commit before actually in range
@@ -76,6 +77,12 @@ var _target_enemy = null # Unit or Vehicle — duck-typed (faction_id, health, g
 var _target_vehicle: Vehicle = null
 var _target_seat: VehicleSeat = null
 var _seek_vehicle_started_msec: int = 0
+
+# Ground vehicle obstacle avoidance: once critical (see
+# VEHICLE_OBSTACLE_CRITICAL_DIST), commit to one escape turn direction
+# instead of re-picking every physics frame.
+var _ground_avoid_bias: float = 0.0
+var _ground_avoid_until_msec: int = 0
 
 # Vehicle possession (mirrors PlayerInput's possessed_seat/possessed_vehicle)
 var possessed_seat: VehicleSeat = null
@@ -836,6 +843,16 @@ func _compute_steer_throttle(vehicle: Vehicle, target_pos: Vector3) -> Vector2:
 	var steer: float = clamp(-heading_error / deg_to_rad(VEHICLE_STEER_FULL_LOCK_DEG), -1.0, 1.0)
 	var throttle: float = clamp(1.0 - abs(heading_error) / deg_to_rad(VEHICLE_THROTTLE_EASE_DEG), VEHICLE_THROTTLE_MIN, 1.0)
 
+	var now_msec: int = Time.get_ticks_msec()
+	if now_msec < _ground_avoid_until_msec:
+		# Mid-committed escape turn -- hold the direction rather than
+		# re-evaluating every frame. Recomputing "which side is the wall
+		# on" continuously near a corner flips back and forth as the
+		# vehicle's own forward vector rotates, turning what should be a
+		# clean escape turn into a slow hunting oscillation that (confirmed
+		# live) could take 10+ seconds to actually clear a single wall.
+		return Vector2(_ground_avoid_bias, VEHICLE_OBSTACLE_CRITICAL_THROTTLE)
+
 	var avoidance: Dictionary = _obstacle_avoidance(vehicle)
 	if not avoidance.is_empty():
 		if avoidance.distance <= VEHICLE_OBSTACLE_CRITICAL_DIST:
@@ -843,9 +860,12 @@ func _compute_steer_throttle(vehicle: Vehicle, target_pos: Vector3) -> Vector2:
 			# isn't enough for a slow turner -- a walker's 50deg/s turn
 			# rate can't out-turn an obstacle it's still driving toward at
 			# half throttle, so it just grinds along the wall while slowly
-			# rotating (confirmed live). Override steering outright and
-			# nearly stop forward motion so it actually pivots clear
-			# before resuming toward the target.
+			# rotating. Override steering outright and nearly stop forward
+			# motion so it actually pivots clear before resuming toward
+			# the target, and commit to this one direction for a beat
+			# (see above) instead of re-picking every frame.
+			_ground_avoid_bias = avoidance.bias
+			_ground_avoid_until_msec = now_msec + int(VEHICLE_OBSTACLE_ESCAPE_DURATION * 1000.0)
 			steer = avoidance.bias
 			throttle = VEHICLE_OBSTACLE_CRITICAL_THROTTLE
 		else:

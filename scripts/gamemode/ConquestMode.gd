@@ -12,6 +12,7 @@ const AI_SOLDIER_SCENE := preload("res://scenes/units/ai/AISoldier.tscn")
 @export var respawn_delay: float = 5.0
 @export var faction_a_data: FactionData
 @export var faction_b_data: FactionData
+@export var vehicle_vacant_respawn_threshold: float = 30.0 # a driver seat idle this long routes the next respawning bot straight into it
 
 @onready var units_root: Node3D = $UnitsRoot
 @onready var hud: HUD = $UILayer/HUD
@@ -60,6 +61,31 @@ func _spawn_bots(faction_id: int, faction_data: FactionData) -> void:
 			bot.global_transform = _jittered_spawn_transform(spawn_post)
 		bot.apply_class(class_data)
 
+## Vehicle pads all cluster near home base, but bots respawn at whichever
+## owned post they pick -- once forward posts get captured, respawning
+## bots increasingly land far from the pads and stop bothering to walk
+## back, so parked vehicles just sit empty for the rest of the match.
+## Picking the single longest-idle driver seat past the threshold (rather
+## than any seat past it) keeps this rare and deliberate instead of
+## routing bots into vehicles the moment the threshold ticks over.
+func _pick_longest_vacant_seat(faction_id: int) -> VehicleSeat:
+	var best: VehicleSeat = null
+	var best_vacant: float = vehicle_vacant_respawn_threshold
+	for node in get_tree().get_nodes_in_group("vehicles"):
+		var vehicle: Vehicle = node
+		if not vehicle or vehicle.health.is_dead:
+			continue
+		if vehicle.faction_id != -1 and vehicle.faction_id != faction_id:
+			continue
+		var seat: VehicleSeat = vehicle.driver_seat
+		if not seat or seat.occupant_unit != null:
+			continue
+		if seat.vacant_seconds <= best_vacant:
+			continue
+		best_vacant = seat.vacant_seconds
+		best = seat
+	return best
+
 func _pick_spawn_post(faction_id: int) -> CommandPost:
 	var owned: Array = MatchState.command_posts.filter(func(p): return p.owner_faction_id == faction_id)
 	if owned.is_empty():
@@ -89,6 +115,19 @@ func _on_unit_died(victim: Node, _killer: Node, victim_faction: int, _killer_fac
 	if not faction_data or faction_data.available_classes.is_empty():
 		return
 	var class_data: ClassData = faction_data.available_classes.pick_random()
+
+	var vacant_seat: VehicleSeat = _pick_longest_vacant_seat(victim_faction)
+	if vacant_seat:
+		victim.global_transform = vacant_seat.global_transform
+		(victim as Unit).apply_class(class_data)
+		(victim as Unit).respawn_at(victim.global_transform)
+		var brain: AIBrain = victim.get_node_or_null("AIBrain")
+		if brain and brain.board_vehicle_directly(vacant_seat):
+			return
+		# Seat turned out unavailable after all (e.g. lost a race the same
+		# tick) -- fall through to a normal command-post spawn below rather
+		# than leaving the bot standing wherever the vehicle happened to be.
+
 	var spawn_post: CommandPost = _pick_spawn_post(victim_faction)
 	if spawn_post:
 		victim.global_transform = _jittered_spawn_transform(spawn_post)

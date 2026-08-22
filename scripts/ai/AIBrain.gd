@@ -427,9 +427,19 @@ func _board_vehicle() -> void:
 	var vehicle: Vehicle = _target_vehicle
 	_target_seat = null
 	_target_vehicle = null
-	if not seat.can_occupy(unit):
+	if not board_vehicle_directly(seat):
 		_bot_state = BotState.ADVANCE
-		return
+
+## Occupies the given seat immediately, skipping the walk-to-seat flow --
+## shared by the normal (walked-to, reserved) boarding path above and by
+## ConquestMode dropping a freshly-respawned bot straight into a
+## long-vacant vehicle (see VehicleSeat.vacant_seconds). Returns false if
+## the seat turned out not to be occupiable (e.g. someone else beat the
+## bot to it).
+func board_vehicle_directly(seat: VehicleSeat) -> bool:
+	if not seat or not seat.can_occupy(unit):
+		return false
+	var vehicle: Vehicle = seat.vehicle
 	seat.occupy(unit, self)
 	possessed_seat = seat
 	possessed_vehicle = vehicle
@@ -440,6 +450,7 @@ func _board_vehicle() -> void:
 		else:
 			_vehicle_state = VehicleBotState.DRIVE_TO_OBJECTIVE
 	_decision_timer = 0.0
+	return true
 
 func _exit_vehicle_ai() -> void:
 	var seat: VehicleSeat = possessed_seat

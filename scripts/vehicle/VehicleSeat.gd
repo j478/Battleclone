@@ -31,10 +31,21 @@ var _reservation_expires_msec: int = 0
 
 var _nearby_player_input: Node
 
+## How long this seat has sat empty. Read by ConquestMode so a respawning
+## AI bot can be dropped straight into a vehicle that's been sitting idle
+## too long instead of walking from a command post -- otherwise, once
+## the match moves on and bots start respawning at forward posts instead
+## of home base, the pads back at base just sit empty for the rest of
+## the match with nobody around to walk back and claim them.
+var vacant_seconds: float = 0.0
+
 func _ready() -> void:
 	vehicle = get_parent() as Vehicle
 	body_entered.connect(_on_body_entered)
 	body_exited.connect(_on_body_exited)
+
+func _process(delta: float) -> void:
+	vacant_seconds = 0.0 if occupant_unit else vacant_seconds + delta
 
 func _on_body_entered(body: Node) -> void:
 	if occupant_unit or not (body is Unit):

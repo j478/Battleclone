@@ -443,8 +443,20 @@ vehicle_scene = ExtResource("8")
 vehicle_data = ExtResource("9")
 faction_id = 0
 
+[node name="SpeederPadA2" parent="VehiclePads" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -135, 0, -96)
+vehicle_scene = ExtResource("8")
+vehicle_data = ExtResource("9")
+faction_id = 0
+
 [node name="SpeederPadB" parent="VehiclePads" instance=ExtResource("7")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 135, 0, -24)
+vehicle_scene = ExtResource("8")
+vehicle_data = ExtResource("9")
+faction_id = 1
+
+[node name="SpeederPadB2" parent="VehiclePads" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 135, 0, 96)
 vehicle_scene = ExtResource("8")
 vehicle_data = ExtResource("9")
 faction_id = 1
@@ -456,8 +468,22 @@ vehicle_data = ExtResource("11")
 faction_id = 0
 respawn_delay = 35.0
 
+[node name="WalkerPadA2" parent="VehiclePads" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -135, 0, 96)
+vehicle_scene = ExtResource("10")
+vehicle_data = ExtResource("11")
+faction_id = 0
+respawn_delay = 35.0
+
 [node name="WalkerPadB" parent="VehiclePads" instance=ExtResource("7")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 135, 0, 24)
+vehicle_scene = ExtResource("10")
+vehicle_data = ExtResource("11")
+faction_id = 1
+respawn_delay = 35.0
+
+[node name="WalkerPadB2" parent="VehiclePads" instance=ExtResource("7")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 135, 0, -96)
 vehicle_scene = ExtResource("10")
 vehicle_data = ExtResource("11")
 faction_id = 1

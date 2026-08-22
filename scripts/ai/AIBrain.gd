@@ -292,14 +292,19 @@ func _maybe_seek_starfighter() -> bool:
 	var fighter: Vehicle = _find_available_starfighter()
 	if not fighter:
 		return false
-	var seat: VehicleSeat = fighter.driver_seat
-	if not seat or not seat.can_occupy(unit) or seat.is_reserved_by_other(self):
-		return false
-	if unit.global_position.distance_to(fighter.global_position) > STARFIGHTER_SEEK_MAX_DIST:
-		return false
-	return _try_commit_seek(fighter, seat)
+	return _try_commit_seek(fighter, fighter.driver_seat)
 
+## Was returning the first flight vehicle found in the "vehicles" group
+## regardless of whether its seat was actually free -- with several pads
+## per faction, that meant every bot's roll kept aiming at the same
+## (often already-occupied) fighter and silently failing, so the other
+## pads never got crewed by AI at all (confirmed live: at most ~1 fighter
+## per faction airborne no matter how many pads existed). Now scans every
+## matching fighter and picks the nearest one whose seat is actually
+## available.
 func _find_available_starfighter() -> Vehicle:
+	var best: Vehicle = null
+	var best_dist: float = STARFIGHTER_SEEK_MAX_DIST
 	for node in unit.get_tree().get_nodes_in_group("vehicles"):
 		var vehicle: Vehicle = node
 		if not vehicle or vehicle.health.is_dead:
@@ -308,8 +313,14 @@ func _find_available_starfighter() -> Vehicle:
 			continue
 		if not vehicle.vehicle_data or vehicle.vehicle_data.movement_type != VehicleData.MovementType.FLIGHT:
 			continue
-		return vehicle
-	return null
+		var seat: VehicleSeat = vehicle.driver_seat
+		if not seat or not seat.can_occupy(unit) or seat.is_reserved_by_other(self):
+			continue
+		var dist: float = unit.global_position.distance_to(vehicle.global_position)
+		if dist < best_dist:
+			best_dist = dist
+			best = vehicle
+	return best
 
 func _evaluate_vehicle_option() -> bool:
 	var objective_pos: Vector3 = _target_post.global_position
